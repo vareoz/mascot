@@ -5,17 +5,17 @@
       "hand_in_body_mm": 0.0,
       "phone_in_body_mm": 0.0,
       "hand_in_phone_mm": 0.0,
-      "digit_collisions": 6,
-      "crease_overlaps": 13,
+      "digit_collisions": 0,
+      "crease_overlaps": 8,
       "body_scale_dev": 0.016
     },
     "Wave": {
       "floor_mm": 0.72,
-      "hand_in_body_mm": 5.375,
+      "hand_in_body_mm": 0.0,
       "phone_in_body_mm": 0.0,
       "hand_in_phone_mm": 0.0,
-      "digit_collisions": 6,
-      "crease_overlaps": 76,
+      "digit_collisions": 0,
+      "crease_overlaps": 97,
       "body_scale_dev": 0.01
     },
     "Celebrate": {
@@ -23,26 +23,26 @@
       "hand_in_body_mm": 0.0,
       "phone_in_body_mm": 0.0,
       "hand_in_phone_mm": 0.0,
-      "digit_collisions": 66,
-      "crease_overlaps": 229,
+      "digit_collisions": 56,
+      "crease_overlaps": 244,
       "body_scale_dev": 0.08
     },
     "Walk": {
       "floor_mm": 0.375,
-      "hand_in_body_mm": 4.0,
+      "hand_in_body_mm": 0.0,
       "phone_in_body_mm": 0.0,
       "hand_in_phone_mm": 0.0,
-      "digit_collisions": 6,
-      "crease_overlaps": 13,
+      "digit_collisions": 0,
+      "crease_overlaps": 8,
       "body_scale_dev": 0.012
     },
     "Phone": {
       "floor_mm": 0.745,
-      "hand_in_body_mm": 46.781,
+      "hand_in_body_mm": 0.0,
       "phone_in_body_mm": 0.0,
-      "hand_in_phone_mm": 0.0,
-      "digit_collisions": 3,
-      "crease_overlaps": 177,
+      "hand_in_phone_mm": 0.214,
+      "digit_collisions": 0,
+      "crease_overlaps": 211,
       "body_scale_dev": 0.01
     },
     "Fist": {
@@ -50,44 +50,44 @@
       "hand_in_body_mm": 0.0,
       "phone_in_body_mm": 0.0,
       "hand_in_phone_mm": 0.0,
-      "digit_collisions": 34,
-      "crease_overlaps": 99,
+      "digit_collisions": 20,
+      "crease_overlaps": 85,
       "body_scale_dev": 0.008
     },
     "Present": {
       "floor_mm": 0.712,
-      "hand_in_body_mm": 5.517,
+      "hand_in_body_mm": 0.0,
       "phone_in_body_mm": 0.0,
       "hand_in_phone_mm": 0.0,
-      "digit_collisions": 6,
-      "crease_overlaps": 121,
+      "digit_collisions": 0,
+      "crease_overlaps": 123,
       "body_scale_dev": 0.008
     }
   },
   "hand_poses": {
     "fist": {
-      "digit_collisions": 34,
-      "crease_overlaps": 108
+      "digit_collisions": 20,
+      "crease_overlaps": 100
     },
     "open": {
       "digit_collisions": 0,
-      "crease_overlaps": 66
+      "crease_overlaps": 79
     },
     "phone": {
       "digit_collisions": 0,
-      "crease_overlaps": 142
+      "crease_overlaps": 162
     },
     "point": {
       "digit_collisions": 0,
-      "crease_overlaps": 121
+      "crease_overlaps": 123
     },
     "relaxed": {
-      "digit_collisions": 6,
-      "crease_overlaps": 74
+      "digit_collisions": 0,
+      "crease_overlaps": 80
     },
     "wave": {
       "digit_collisions": 0,
-      "crease_overlaps": 66
+      "crease_overlaps": 79
     }
   }
 }
