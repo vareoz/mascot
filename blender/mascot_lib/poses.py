@@ -139,7 +139,7 @@ HAND_POSES = {
     "open": merge(fingers([(-6, -4, -2), (-6, -4, -2), (-6, -4, -2)], (11, 0, -13)),
                   thumb((0, 0, 14), (-6, 0, 0), (-8, 0, 0))),
     # natural resting hand, fingers gently curved
-    "relaxed": merge(fingers([(14, 18, 12), (18, 22, 14), (23, 26, 16)], (0.5, 0, -0.5)),
+    "relaxed": merge(fingers([(16, 20, 13), (16, 20, 13), (16, 20, 13)], (1.0, 0, -1.0)),
                      thumb((4, 0, -4), (10, 0, 0), (12, 0, 0))),
     # closed fist, thumb wrapped over the middle phalanges of index and middle
     "fist": merge(fingers([(84, 96, 62), (86, 98, 62), (88, 98, 62)], (3, 0, -3)),

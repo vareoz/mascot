@@ -92,7 +92,7 @@ def solve_thumb_over_fingers(fk, finger_angles, target_fingers=("Index", "Middle
             centre = np.array(M.translation) + np.array(M.col[1].xyz) * L * 0.5
             # the thumb rests against the thumb-side face of the curled finger (local -X)
             thumb_side = -np.array(M.col[0].xyz)
-            tgt.append(centre + thumb_side * (fk.radii[name][0] + fk.radii[f"DEF_Thumb_03.{fk.side}"][0]) * 1.08)
+            tgt.append(centre + thumb_side * (fk.radii[name][0] + fk.radii[f"DEF_Thumb_03.{fk.side}"][0]) * 1.25)
     target = np.mean(tgt, 0)
     best = None
     rng = np.random.default_rng(3)
@@ -102,7 +102,7 @@ def solve_thumb_over_fingers(fk, finger_angles, target_fingers=("Index", "Middle
         pen = 0.0
         for Q, Rq in others:
             g = capsule_gap(P[S > 0], Rr[S > 0], Q, Rq)
-            pen += max(0.0, 0.0025 - g)          # keep a small air gap to the fingers
+            pen += max(0.0, 0.004 - g)           # keep a small air gap to the fingers
         distal = P[S == 2].mean(0)
         return np.linalg.norm(distal - target) + 25 * pen
 

@@ -284,10 +284,10 @@ def eye_frame(side):
 class Arm:
     # the shoulder ball sits just under the side surface of the body; the arm
     # hangs alongside the sloped side, slightly more open than the side itself
-    SHOULDER = np.array([0.385, -0.030, ZB + 0.425])
+    SHOULDER = np.array([0.400, -0.030, ZB + 0.425])
     UPPER_LEN = 0.165
     FORE_LEN = 0.160
-    ABDUCT = 45.0            # degrees away from the body (from vertical)
+    ABDUCT = 47.0            # degrees away from the body (from vertical)
     FORWARD = 4.0            # degrees forward swing of the upper arm
     ELBOW_BEND = 10.0        # rest-pose elbow flexion (forward)
     R_SHOULDER = 0.100                   # chunky sausage arms (~18% of the body width)

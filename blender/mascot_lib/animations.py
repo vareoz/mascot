@@ -385,7 +385,7 @@ def anim_walk(rig, leg_ob):
             kn = R.knee if side == "L" else D.mirror(R.knee)
             pose.update(pole(rig, f"CTRL_Pole_Leg.{side}", (kn[0], kn[1] - 0.45 + y * 0.5, kn[2])))
             swing = 17 * math.cos(2 * math.pi * (p + ph))      # + = arm back when the same-side foot is forward
-            pose[f"FK_UpperArm.{side}"] = {"r": (swing, 0, -6 * sg)}   # arms swing slightly away from the body
+            pose[f"FK_UpperArm.{side}"] = {"r": (swing, 0, -9 * sg)}   # arms swing slightly away from the body
             pose[f"FK_Forearm.{side}"] = {"r": (-10 - 8 * max(0, -math.cos(2 * math.pi * (p + ph))), 0, 0)}
             pose[f"FK_Hand.{side}"] = {"r": (6, 0, 0)}
         bob = 0.016 * (math.cos(4 * math.pi * p) + 1) / 2
@@ -431,7 +431,7 @@ def anim_phone(rig):
     a_out_h = (Mh.to_3x3() @ Vector((0, 1, 0))).normalized()
     n_fw_h = (Mh.to_3x3() @ Vector((0, 0, 1))).normalized()
     # right hand: open "look at this" gesture, palm up, towards the phone
-    w_g = Vector((-0.50, -0.30, 0.80))
+    w_g = Vector((-0.64, -0.20, 0.93))       # beside the body, within the arm's reach
     a_g = Vector((0.25, -1.0, 0.25)).normalized()
     n_g = Vector((0.15, 0.1, 1.0)).normalized()
     for f in range(0, n + 1, 2):
