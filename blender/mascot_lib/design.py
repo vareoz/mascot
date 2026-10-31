@@ -43,14 +43,14 @@ BODY_H = 1.0              # nominal body height
 
 class Body:
     # Sharp construction triangle (before corner fillets)
-    W0 = 1.12
-    H0 = 1.27
+    W0 = 1.15
+    H0 = 1.33
     BASE_BULGE = 0.018
-    SIDE_BULGE = 0.055
-    R_TOP = 0.33           # fillet radius of the top corner (soft, rounded tip as in the reference)
-    R_BASE = 0.19           # fillet radius of the two bottom corners
-    EDGE_ROLL = 0.105       # radius of the soft edge between front/back faces and the sides
-    PILLOW = 0.028          # extra inflation of the front and back faces (puffy vinyl)
+    SIDE_BULGE = 0.022
+    R_TOP = 0.42           # fillet radius of the top corner (soft, rounded tip as in the reference)
+    R_BASE = 0.13           # fillet radius of the two bottom corners
+    EDGE_ROLL = 0.072       # radius of the soft edge between front/back faces and the sides
+    PILLOW = 0.020          # extra inflation of the front and back faces (puffy vinyl)
 
     def __init__(self):
         W0, H0 = self.W0, self.H0
@@ -173,7 +173,7 @@ def rounded_triangle_outline(verts, r, count=150):
 class Face:
     EYE_X = 0.124
     EYE_Z = ZB + 0.658
-    EYE_R = (0.046, 0.076, 0.029)        # half width, half height, half depth
+    EYE_R = (0.046, 0.084, 0.030)        # half width, half height, half depth
     EYE_SINK = 0.009                     # how far the eye's centre sits under the surface
     SMILE_Z = ZB + 0.586
     SMILE_W = 0.053                      # half width
@@ -184,7 +184,7 @@ class Face:
     HAPPY_R = 0.0105
     HAPPY_HIDE = 0.03                    # rest-pose depth of the closed "happy" eye arcs
     # triangular mouth / emblem, in (x, height above body bottom)
-    MOUTH_TRI = [(0.0604, 0.5258), (-0.1446, 0.1394), (0.2106, 0.2760)]   # reference x1.12
+    MOUTH_TRI = [(0.064, 0.548), (-0.172, 0.118), (0.238, 0.268)]   # measured on the reference
     MOUTH_ROUND = 0.024
     MOUTH_RAISE = 0.0025                 # relief above the body surface
     MOUTH_DEPTH = 0.006
@@ -284,7 +284,7 @@ def eye_frame(side):
 class Arm:
     # the shoulder ball sits just under the side surface of the body; the arm
     # hangs alongside the sloped side, slightly more open than the side itself
-    SHOULDER = np.array([0.400, -0.030, ZB + 0.425])
+    SHOULDER = np.array([0.412, -0.030, ZB + 0.425])
     UPPER_LEN = 0.165
     FORE_LEN = 0.160
     ABDUCT = 47.0            # degrees away from the body (from vertical)
@@ -296,7 +296,7 @@ class Arm:
 
 
 class Hand:
-    SCALE = 1.20                         # overall hand size (all hand numbers below are pre-scale)
+    SCALE = 1.36                         # overall hand size (all hand numbers below are pre-scale)
     PALM_LEN = 0.098                     # wrist -> knuckle line
     PALM_HALF = (0.050, 0.098, 0.032)    # along a, t, n
     # classic cartoon hand: thumb + three chunky fingers
@@ -313,7 +313,7 @@ class Hand:
 
 
 class Phone:
-    W, H, T = 0.200, 0.400, 0.030          # width, height, thickness
+    W, H, T = 0.220, 0.440, 0.032          # width, height, thickness
     # centre of the phone in the left-hand frame (along fingers a, towards thumb t,
     # out of the palm n).  The phone's back rests on the palm, its width runs along
     # the fingers and its long axis along the knuckle line (thumb side up).
