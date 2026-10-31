@@ -2,7 +2,7 @@
 
 Mascota de marca construida **desde cero** a partir de la referencia `reference/mascot_reference.jpg`:
 cuerpo triangular crema de vinilo, ojos ovalados negros brillantes, boca/emblema triangular negro,
-sonrisa pequeña, brazos y piernas negros cartoon con pies grandes y manos de **cinco dedos articulados**.
+sonrisa pequeña, brazos y piernas negros cartoon con pies grandes y manos cartoon de **cuatro dedos** (pulgar oponible + tres dedos), todos articulados.
 
 Todo el personaje (geometría, materiales, esqueleto, pesos, controles, poses de mano y animaciones)
 se genera con un pipeline reproducible en Python para Blender. No hay imágenes planas: el teléfono, los ojos,
@@ -87,9 +87,9 @@ El build tarda unos 2–3 minutos en CPU y es determinista.
   biselados que sigue la curvatura del cuerpo. Arcos de ojos “felices” (^ ^) ocultos bajo la superficie, que el rig
   saca para la expresión de celebración.
 * **Brazos y manos**: una sola malla continua por lado (hombro → codo → muñeca → palma → dedos), sin costuras.
-  Mano con palma reconocible (dorso abombado, eminencia tenar e hipotenar, ligero hueco palmar), cuatro dedos con
-  longitudes progresivas (corazón > anular ≈ índice > meñique) de tres falanges y pulgar oponible de tres segmentos.
-  Dedos gruesos y redondeados, separados en la malla de reposo.
+  Mano cartoon de cuatro dedos: tres dedos gruesos y redondeados con longitudes progresivas (corazón > índice > anular),
+  cada uno con tres falanges, y un pulgar oponible de tres segmentos. Palma reconocible (dorso abombado, eminencia tenar e
+  hipotenar, ligero hueco palmar). Los dedos están separados en la malla de reposo.
 * **Piernas y pies**: piernas negras cortas y gruesas, pies grandes redondeados con suela plana, ligeramente abiertos.
 * **Topología**: quads limpios (QuadriFlow) re-proyectados sobre la superficie analítica.
   Unos 118 000 triángulos en total en el GLB.
@@ -110,8 +110,8 @@ Arm IK, Leg FK, Leg IK, Fingers, Props* (visibles) y *Deform, Mechanism* (oculta
 | `CTRL_IK_Hand` + `CTRL_Pole_Arm` | Brazo en IK con vector polar (codo). |
 | `FK_Thigh / FK_Shin / FK_Foot`, `DEF_Toe` | Pierna en FK, cadera, rodilla, tobillo y punta del pie. |
 | `CTRL_IK_Foot` + `CTRL_Pole_Leg` | Pierna en IK con polar de rodilla (pies plantados). |
-| `DEF_Index/Middle/Ring/Pinky/Thumb_01..03` | Dedos en FK. Rotación X = flexión, Z = separación. En los nudillos la separación se aplica antes que la flexión (orden ZYX), como una articulación real, así un dedo separado mantiene su propio plano de flexión. |
-| `CTRL_Grip` | Control de agarre: su rotación X cierra los cuatro dedos a la vez (se suma a la pose de cada dedo). |
+| `DEF_Index/Middle/Ring/Thumb_01..03` | Dedos en FK. Rotación X = flexión, Z = separación. En los nudillos la separación se aplica antes que la flexión (orden ZYX), como una articulación real, así un dedo separado mantiene su propio plano de flexión. |
+| `CTRL_Grip` | Control de agarre: su rotación X (−15° a 95°, Y/Z bloqueados) cierra los tres dedos a la vez y se suma a la pose de cada dedo. Las falanges tienen límites de rotación anatómicos. |
 | `CTRL_ThumbGrip` | Agarre del pulgar. |
 | `DEF_Prop.L/R` | Zócalo de objetos: el teléfono está emparentado aquí, así que se puede mover o reorientar sin tocar la geometría de la mano. |
 | `DEF_Eye`, `DEF_EyeHappy`, `DEF_Smile`, `DEF_Mouth` | Controles faciales independientes: mirada (traslación), parpadeo (escala Y), ojos felices, ancho de sonrisa y boca. |
@@ -128,10 +128,11 @@ El cuerpo y los elementos de la cara son rígidos respecto a su hueso, así que 
 ## Poses de mano
 
 Guardadas como acciones `HandPose_*` en el `.blend` y comprobadas desde palma, dorso y ambos laterales
-(`renders/hand_poses.png`): **abierta** (cinco dedos separados), **relajada**, **puño** (pulgar sobre las
+(`renders/hand_poses.png`): **abierta** (los cuatro dedos separados), **relajada**, **puño** (pulgar sobre las
 falanges medias de índice y corazón), **saludo**, **teléfono** y **señalar** (índice extendido).
-El puño, el señalar y el agarre del teléfono los ajusta el resolvedor de contactos: el pulgar se coloca sobre los dedos
-y cada dedo se cierra hasta tocar el borde del teléfono sin atravesarlo.
+El puño, el señalar y el agarre del teléfono los ajusta el resolvedor de contactos. En el puño cada dedo se cierra hasta
+que la yema apoya en la palma (holgura de unos 0,7 mm, sin hundirse) y el pulgar se apoya en el lateral del índice.
+En el agarre cada dedo se cierra hasta tocar el borde del teléfono sin atravesarlo.
 
 ![Poses de mano](renders/hand_poses.png)
 
@@ -139,8 +140,9 @@ y cada dedo se cierra hasta tocar el borde del teléfono sin atravesarlo.
 
 Objeto independiente (`PROP_Phone` + `PROP_PhoneScreen`): carcasa negra de esquinas redondeadas, pantalla
 rebajada con UVs y textura (mosaico naranja con el rayo, mosaicos de bombilla y casa, notch). El agarre lo
-calcula el resolvedor: la palma apoya en la parte trasera, los cuatro dedos envuelven el borde exterior
-(como en la referencia) y el pulgar sujeta el borde opuesto, con holguras de contacto ≤ 0,6 mm.
+calcula el resolvedor: la palma apoya en la parte trasera, los tres dedos envuelven el borde exterior
+(como en la referencia) y el pulgar sujeta el borde opuesto. La colocación se comprueba después contra la malla
+deformada real de la mano y se separa hasta que no hay interpenetración (ver el informe de QA).
 
 ## Animaciones (24 fps)
 
@@ -150,8 +152,8 @@ calcula el resolvedor: la palma apoya en la parte trasera, los cuatro dedos envu
 | `Wave` (Saludo) | 0–72, bucle | Levanta la mano derecha en arco, saluda con la muñeca y ondula los dedos. |
 | `Celebrate` (Celebración) | 0–60 | Anticipación, salto con ambos brazos arriba y puños cerrados, ojos felices, aterrizaje con squash. |
 | `Walk` (Caminata) | 0–32, bucle (en el sitio) | Ciclo coordinado: pies con apoyo de talón y despegue sin atravesar el suelo, brazos en oposición, rebote y balanceo del cuerpo. |
-| `Phone` (Teléfono) | 0–96, bucle | El teléfono aparece en la mano izquierda, lo sostiene mostrando la pantalla y la mano derecha hace un gesto de presentación. |
-| `Fist` (Puño) | 0–48, bucle | Ambas manos se cierran en puño y se abren. |
+| `Phone` (Teléfono) | 0–96, bucle | Sostiene el teléfono en alto con la mano izquierda mostrando la pantalla, con un ligero balanceo, y la mano derecha hace un gesto de presentación con la palma hacia arriba. |
+| `Fist` (Puño) | 0–48, bucle | Ambas manos se cierran en puño y se abren. Los dedos se cierran escalonados y el pulgar se pliega al final (y se abre primero), así nunca atraviesa el índice. |
 | `Present` (Presentación) | 0–72 | Anticipación, señala hacia un lado con el índice y mantiene la pose. |
 
 Cada clip incluye claves de todos los controles, así que se reproduce de forma independiente.
@@ -168,8 +170,8 @@ El visor web se probó en Chromium headless con el GLB exportado (las 7 animacio
 
 ## Decisiones de diseño y límites conocidos
 
-* **Manos de cinco dedos**: la referencia dibuja manos tipo manopla; se siguieron las especificaciones (cinco dedos con
-  pulgar oponible) manteniendo el estilo de vinilo grueso y redondeado.
+* **Manos de cuatro dedos**: la referencia dibuja manos tipo manopla. A petición del cliente la mano tiene cuatro dedos
+  (pulgar + tres), el estándar de las mascotas cartoon, con dedos gruesos y redondeados de estilo vinilo.
 * **Boca**: la referencia muestra a la vez una sonrisa pequeña y un gran triángulo negro. Se modelaron ambos: el
   triángulo como boca/emblema (con hueso propio) y la sonrisa como línea fina, también con control.
 * **Pliegues de flexión**: con skinning lineal (el que usan glTF y three.js), la piel del interior de una articulación

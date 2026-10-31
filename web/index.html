@@ -54,8 +54,8 @@
 
 <script type="importmap">
 { "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+  "three": "https://cdn.jsdelivr.net/npm/three@0.165.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.165.0/examples/jsm/"
 } }
 </script>
 <script type="module">
@@ -118,13 +118,14 @@ ground.rotation.x = -Math.PI / 2;
 ground.receiveShadow = true;
 scene.add(ground);
 
-let mixer, actions = {}, current, skeletonHelper, model;
+let mixer, actions = {}, current, skeletonHelper, model, phoneParts = [];
 const status = document.getElementById("status");
 
 new GLTFLoader().load(MODEL, (gltf) => {
   model = gltf.scene;
   model.traverse((o) => {
     if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; }
+    if (o.isMesh && /PROP_Phone/.test(o.name)) phoneParts.push(o);
   });
   scene.add(model);
   skeletonHelper = new THREE.SkeletonHelper(model);
@@ -158,8 +159,11 @@ new GLTFLoader().load(MODEL, (gltf) => {
 }, undefined, (e) => { status.textContent = "No se pudo cargar el modelo: " + e.message; });
 
 function play(name) {
-  const next = actions[name];
+  const next = actions[name] || actions.Idle;
   if (!next) return;
+  name = next.getClip().name;
+  // the phone only belongs to the Phone clip (in the other clips its socket is scaled to 0)
+  for (const p of phoneParts) p.visible = name === "Phone";
   next.reset().setEffectiveWeight(1).play();
   if (current && current !== next) current.crossFadeTo(next, 0.25, false);
   current = next;
@@ -169,6 +173,7 @@ function play(name) {
 function setTime(name, t) {            // deterministic pose for screenshots / tests
   for (const a of Object.values(actions)) a.stop();
   const a = actions[name];
+  for (const p of phoneParts) p.visible = name === "Phone";
   a.reset().play();
   a.time = t;
   current = a;

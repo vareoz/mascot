@@ -10,7 +10,7 @@ import math
 import bpy
 from mathutils import Euler, Quaternion, Vector
 
-FINGERS = ["Index", "Middle", "Ring", "Pinky"]
+FINGERS = ["Index", "Middle", "Ring"]   # thumb + 3 fingers (4 digits per hand)
 
 
 def mirror_name(name):
@@ -136,19 +136,19 @@ def grip_controls(g=0.0, tg=0.0, side="L"):
 
 HAND_POSES = {
     # fingers extended and clearly spread apart
-    "open": merge(fingers([(-6, -4, -2), (-6, -4, -2), (-6, -4, -2), (-6, -4, -2)], (9, 2, -7, -16)),
+    "open": merge(fingers([(-6, -4, -2), (-6, -4, -2), (-6, -4, -2)], (11, 0, -13)),
                   thumb((0, 0, 14), (-6, 0, 0), (-8, 0, 0))),
     # natural resting hand, fingers gently curved
-    "relaxed": merge(fingers([(14, 18, 12), (18, 22, 14), (22, 25, 16), (26, 28, 18)], (2, 0, -2, -4)),
+    "relaxed": merge(fingers([(14, 18, 12), (18, 22, 14), (23, 26, 16)], (2, 0, -3)),
                      thumb((4, 0, -4), (10, 0, 0), (12, 0, 0))),
     # closed fist, thumb wrapped over the middle phalanges of index and middle
-    "fist": merge(fingers([(84, 96, 62), (86, 98, 62), (88, 98, 62), (90, 96, 60)], (3, 0, -3, -6)),
+    "fist": merge(fingers([(84, 96, 62), (86, 98, 62), (88, 98, 62)], (3, 0, -3)),
                   thumb((22, -28, -38), (34, 0, 0), (38, 0, 0))),
     # waving: open, fingers together but separated, slightly bent back
-    "wave": merge(fingers([(-4, -2, 0), (-4, -2, 0), (-4, -2, 0), (-4, -2, 0)], (5, 1, -4, -9)),
+    "wave": merge(fingers([(-4, -2, 0), (-4, -2, 0), (-4, -2, 0)], (6, 0, -8)),
                   thumb((0, 0, 8), (-4, 0, 0), (-4, 0, 0))),
     # pointing with the index finger
-    "point": merge(fingers([(-4, -2, 0), (86, 98, 62), (88, 98, 62), (90, 96, 60)], (2, 0, -3, -6)),
+    "point": merge(fingers([(-4, -2, 0), (86, 98, 62), (88, 98, 62)], (2, 0, -3)),
                    thumb((22, -26, -34), (30, 0, 0), (34, 0, 0))),
 }
 
@@ -170,9 +170,19 @@ def solve_hand_poses(rig, log=print):
             out[f] = [tuple(pose[f"DEF_{f}_{i:02d}.L"]["r"]) for i in (1, 2, 3)]
         return out
 
-    for name, targets in (("fist", ("Index", "Middle")), ("point", ("Middle", "Ring"))):
+    palm_sdf = D.RIG.arm_parts()["palm"]
+    for name, targets in (("fist", ("Index",)), ("point", ("Middle",))):
         cur = finger_angles(HAND_POSES[name])
         curls = [[a[0] for a in cur[f]] for f in FINGERS]
+        # close each curled finger onto the palm instead of using fixed angles
+        for i, f in enumerate(FINGERS):
+            if name == "point" and f == "Index":
+                continue
+            c, g3, pen = SV.solve_curl_against_palm(fk, f, palm_sdf)
+            curls[i] = list(c)
+            for j in range(3):
+                HAND_POSES[name][f"DEF_{f}_{j + 1:02d}.L"]["r"] = (c[j], 0, 0)
+            log(f"[poses] {name} {f}: curls {c} fingertip-palm gap {g3 * 1000:.1f}mm (pen {pen * 1000:.2f})")
         if name == "fist":
             sp, adj = SV.solve_spreads(fk, curls)
         else:   # index stays straight: only ring and pinky need to clear each other
@@ -186,8 +196,18 @@ def solve_hand_poses(rig, log=print):
         log(f"[poses] {name}: thumb {th} score {s:.4f}; finger clearances "
             + ", ".join(f"{k} {v * 1000:.1f}mm" for k, v in SV.finger_clearances(fk, fa).items()))
 
-    spreads = {"Index": 3.0, "Middle": 0.0, "Ring": -3.0, "Pinky": -7.0}
+    spreads = {"Index": 3.0, "Middle": 0.0, "Ring": -4.0}
     SV.solve_phone_placement(fk, D.RIG, spreads, log=log)
+    solve_phone_grip(fk, spreads, log)
+    return HAND_POSES
+
+
+PHONE_SPREADS = {"Index": 3.0, "Middle": 0.0, "Ring": -4.0}
+
+
+def solve_phone_grip(fk, spreads=PHONE_SPREADS, log=print):
+    from . import solver as SV
+    from . import design as D
     c, axes = D.RIG.phone_frame(1)
     box = SV.PhoneBox(c, axes, (D.Phone.W / 2, D.Phone.T / 2, D.Phone.H / 2), 0.006)
     grip = {}
@@ -209,4 +229,44 @@ def solve_hand_poses(rig, log=print):
     HAND_POSES["phone"] = pose
     clear = SV.finger_clearances(fk, grip)
     log("[poses] phone grip finger clearances " + ", ".join(f"{k} {v * 1000:.1f}mm" for k, v in clear.items()))
-    return HAND_POSES
+    return box
+
+
+def phone_mesh_penetration(rig, arm_ob):
+    """Deepest point of the deformed hand mesh inside the phone (metres, >0 = inside)."""
+    import numpy as np
+    from . import solver as SV
+    from . import design as D
+    reset(rig)
+    apply(rig, HAND_POSES["phone"])
+    bpy.context.view_layer.update()
+    dg = bpy.context.evaluated_depsgraph_get()
+    eo = arm_ob.evaluated_get(dg)
+    me = eo.to_mesh()
+    v = np.empty(len(me.vertices) * 3)
+    me.vertices.foreach_get("co", v)
+    eo.to_mesh_clear()
+    v = v.reshape(-1, 3)
+    c, axes = D.RIG.phone_frame(1)
+    box = SV.PhoneBox(c, axes, (D.Phone.W / 2, D.Phone.T / 2, D.Phone.H / 2), 0.006)
+    d = box.sdf(v)
+    reset(rig)
+    return float(max(0.0, -d.min()))
+
+
+def refine_phone_clearance(rig, arm_ob, log=print, tolerance=0.0006):
+    """Check the real skinned hand mesh against the phone (the capsule model used by
+    the solver is an approximation) and move the phone off the palm until the
+    deepest contact is within tolerance, re-solving the finger grip each time."""
+    from . import solver as SV
+    from . import design as D
+    fk = SV.HandFK(rig, "L")
+    for it in range(6):
+        pen = phone_mesh_penetration(rig, arm_ob)
+        log(f"[poses] phone/hand mesh penetration {pen * 1000:.2f}mm (iteration {it})")
+        if pen <= tolerance:
+            break
+        g = D.Phone.GRIP
+        D.Phone.GRIP = (g[0], g[1], g[2] + pen + 0.0004)
+        solve_phone_grip(fk, log=log)
+    return pen

@@ -9,7 +9,7 @@ from .design import RIG as R, normalize, mirror
 
 RIG_NAME = "MASCOT_Rig"
 SIDES = (("L", 1), ("R", -1))
-FINGERS = ["Index", "Middle", "Ring", "Pinky"]
+FINGERS = ["Index", "Middle", "Ring"]   # thumb + 3 fingers (4 digits per hand)
 
 
 def log(*a):
@@ -335,6 +335,26 @@ def build_armature(col, widgets):
         for g in (f"CTRL_Grip.{sfx}", f"CTRL_ThumbGrip.{sfx}"):
             P[g].lock_location = (True, True, True)
             P[g].lock_scale = (True, True, True)
+            P[g].lock_rotation = (False, True, True)       # X = close / open
+            lim = P[g].constraints.new("LIMIT_ROTATION")
+            lim.use_limit_x = True
+            lim.min_x, lim.max_x = math.radians(-15), math.radians(95)
+            lim.owner_space = "LOCAL"
+            lim.use_transform_limit = True
+        # anatomical limits on every finger joint (flexion X, spread Z on the knuckle)
+        for fname in FINGERS + ["Thumb"]:
+            for i in (1, 2, 3):
+                pb = P[f"DEF_{fname}_{i:02d}.{sfx}"]
+                lim = pb.constraints.new("LIMIT_ROTATION")
+                lim.name = "Joint limits"
+                lim.owner_space = "LOCAL"
+                lim.use_limit_x = True
+                if fname == "Thumb":
+                    lim.min_x, lim.max_x = math.radians(-40), math.radians(110)
+                else:
+                    lim.min_x, lim.max_x = math.radians(-25), math.radians(115)
+                    lim.use_limit_z = True
+                    lim.min_z, lim.max_z = (math.radians(-25), math.radians(25)) if i == 1 else (0.0, 0.0)
 
     calibrate_poles(rig)
     return rig

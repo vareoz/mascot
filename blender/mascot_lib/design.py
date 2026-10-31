@@ -171,21 +171,21 @@ def rounded_triangle_outline(verts, r, count=150):
 # Face
 # ---------------------------------------------------------------------------
 class Face:
-    EYE_X = 0.110
-    EYE_Z = ZB + 0.668
-    EYE_R = (0.0345, 0.0565, 0.025)       # half width, half height, half depth
-    EYE_SINK = 0.010                     # how far the eye's centre sits under the surface
-    SMILE_Z = ZB + 0.578
-    SMILE_W = 0.046                      # half width
-    SMILE_SAG = 0.019
-    SMILE_R = 0.0062
-    HAPPY_W = 0.032
-    HAPPY_H = 0.020
-    HAPPY_R = 0.0065
+    EYE_X = 0.116
+    EYE_Z = ZB + 0.658
+    EYE_R = (0.042, 0.068, 0.027)        # half width, half height, half depth
+    EYE_SINK = 0.009                     # how far the eye's centre sits under the surface
+    SMILE_Z = ZB + 0.586
+    SMILE_W = 0.053                      # half width
+    SMILE_SAG = 0.021
+    SMILE_R = 0.0092
+    HAPPY_W = 0.040
+    HAPPY_H = 0.025
+    HAPPY_R = 0.0105
     HAPPY_HIDE = 0.03                    # rest-pose depth of the closed "happy" eye arcs
     # triangular mouth / emblem, in (x, height above body bottom)
-    MOUTH_TRI = [(0.058, 0.505), (-0.125, 0.160), (0.192, 0.282)]
-    MOUTH_ROUND = 0.014
+    MOUTH_TRI = [(0.0604, 0.5258), (-0.1446, 0.1394), (0.2106, 0.2760)]   # reference x1.12
+    MOUTH_ROUND = 0.024
     MOUTH_RAISE = 0.0025                 # relief above the body surface
     MOUTH_DEPTH = 0.006
 
@@ -284,30 +284,30 @@ def eye_frame(side):
 class Arm:
     # the shoulder ball sits just under the side surface of the body; the arm
     # hangs alongside the sloped side, slightly more open than the side itself
-    SHOULDER = np.array([0.362, -0.025, ZB + 0.425])
-    UPPER_LEN = 0.150
-    FORE_LEN = 0.145
-    ABDUCT = 44.0            # degrees away from the body (from vertical)
+    SHOULDER = np.array([0.372, -0.025, ZB + 0.425])
+    UPPER_LEN = 0.165
+    FORE_LEN = 0.160
+    ABDUCT = 42.0            # degrees away from the body (from vertical)
     FORWARD = 4.0            # degrees forward swing of the upper arm
     ELBOW_BEND = 10.0        # rest-pose elbow flexion (forward)
-    R_SHOULDER = 0.076
-    R_ELBOW = 0.071
-    R_WRIST = 0.057
+    R_SHOULDER = 0.082
+    R_ELBOW = 0.078
+    R_WRIST = 0.068
 
 
 class Hand:
-    SCALE = 1.22                         # overall hand size (all hand numbers below are pre-scale)
+    SCALE = 1.12                         # overall hand size (all hand numbers below are pre-scale)
     PALM_LEN = 0.098                     # wrist -> knuckle line
-    PALM_HALF = (0.050, 0.069, 0.027)    # along a, t, n
-    # finger: (name, t offset at knuckle, radius, length, fan angle deg)
-    FINGERS = [("Index", 0.0545, 0.0174, 0.074, 10.5),
-               ("Middle", 0.0180, 0.0179, 0.081, 3.5),
-               ("Ring", -0.0183, 0.0171, 0.076, -4.0),
-               ("Pinky", -0.0535, 0.0156, 0.061, -11.5)]
-    SEG = (0.42, 0.32, 0.26)
+    PALM_HALF = (0.050, 0.088, 0.030)    # along a, t, n
+    # classic cartoon hand: thumb + three chunky fingers
+    # (name, t offset at knuckle, radius, length, fan angle deg)
+    FINGERS = [("Index", 0.0580, 0.0250, 0.074, 8.0),
+               ("Middle", 0.0000, 0.0258, 0.080, 0.0),
+               ("Ring", -0.0580, 0.0246, 0.072, -9.0)]
+    SEG = (0.48, 0.29, 0.23)              # long proximal phalanx: room to curl round the thick palm
     REST_CURL = (5.0, 8.0, 6.0)
-    THUMB_SEG = (0.044, 0.034, 0.030)
-    THUMB_R = (0.0225, 0.0208, 0.0196)
+    THUMB_SEG = (0.044, 0.032, 0.029)
+    THUMB_R = (0.0292, 0.0270, 0.0255)
     THUMB_REST_CURL = (0.0, 8.0, 10.0)
 
 
@@ -322,10 +322,10 @@ class Phone:
 
 
 class Leg:
-    HIP = np.array([0.165, 0.0, ZB + 0.12])
-    KNEE = np.array([0.168, -0.012, 0.272])
-    ANKLE = np.array([0.172, 0.0, 0.120])
-    R = (0.071, 0.067, 0.062)
+    HIP = np.array([0.180, 0.0, ZB + 0.12])
+    KNEE = np.array([0.183, -0.050, 0.270])      # slight rest bend gives the IK some slack
+    ANKLE = np.array([0.186, 0.0, 0.120])
+    R = (0.095, 0.088, 0.080)                    # thick tubes tapering towards the ankle
     TOE_OUT = 8.0                        # degrees, toes pointing slightly outwards
 
 
@@ -364,7 +364,7 @@ class Rig:
 
         self.fingers = {}
         for name, toff, r, L, fan in H.FINGERS:
-            K = hp(H.PALM_LEN, toff, -0.002)
+            K = hp(H.PALM_LEN, toff, 0.006)        # knuckles sit slightly towards the palm side
             r, L = r * hs, L * hs
             d = normalize(rot(n, fan, a))
             # rotation axis for flexion: perpendicular to finger dir, in palm plane
@@ -380,7 +380,7 @@ class Rig:
             self.fingers[name] = dict(pts=pts, radii=radii, n=n, dir=d)
 
         # thumb
-        cmc = hp(0.030, 0.040, 0.012)
+        cmc = hp(0.030, 0.052, 0.014)
         td = normalize(a * 0.66 + t * 0.70 + n * 0.22)
         tz = normalize(n - t * 0.35)
         tz = normalize(tz - td * (td @ tz))
@@ -399,11 +399,11 @@ class Rig:
         self.foot_fwd = fwd
         ax, ay = self.ankle[0], self.ankle[1]
         base = np.array([ax, ay, 0.0])
-        self.heel_c = base + fwd * -0.030 + np.array([0, 0, 0.060])
-        self.toe_c = base + fwd * 0.100 + np.array([0, 0, 0.058])
-        self.ball = base + fwd * 0.085 + np.array([0, 0, 0.050])
-        self.toe_tip = base + fwd * 0.215 + np.array([0, 0, 0.050])
-        self.heel_pt = base + fwd * -0.075 + np.array([0, 0, 0.050])
+        self.heel_c = base + fwd * -0.040 + np.array([0, 0, 0.062])
+        self.toe_c = base + fwd * 0.130 + np.array([0, 0, 0.060])
+        self.ball = base + fwd * 0.110 + np.array([0, 0, 0.052])
+        self.toe_tip = base + fwd * 0.285 + np.array([0, 0, 0.052])
+        self.heel_pt = base + fwd * -0.095 + np.array([0, 0, 0.052])
 
     # --- signed distance functions -------------------------------------------------
     def phone_frame(self, side=1):
@@ -435,16 +435,16 @@ class Rig:
         def palm(p):
             d = sd_round_box(p, palm_c, PH, 0.024 * hs, axes=frame)
             # soft dorsal dome
-            d = smin(d, sd_ellipsoid(p, palm_c - n * 0.004 * hs, tuple(x * hs for x in (0.050, 0.060, 0.027)),
+            d = smin(d, sd_ellipsoid(p, palm_c - n * 0.004 * hs, tuple(x * hs for x in (0.050, 0.080, 0.030)),
                                      axes=frame), 0.01 * hs)
             # hypothenar pad (pinky side of the palm)
-            d = smin(d, sd_ellipsoid(p, hp(0.050, -0.043, 0.012),
-                                     tuple(x * hs for x in (0.042, 0.020, 0.017)), axes=frame), 0.012 * hs)
+            d = smin(d, sd_ellipsoid(p, hp(0.050, -0.058, 0.015),
+                                     tuple(x * hs for x in (0.042, 0.026, 0.020)), axes=frame), 0.012 * hs)
             # palm hollow (shallow cup in the centre of the palm)
             d = ssub(d, sd_ellipsoid(p, hp(0.060, 0.002, 0.044),
                                      tuple(x * hs for x in (0.030, 0.030, 0.019)), axes=frame), 0.012 * hs)
             # wrist to palm transition
-            d = smin(d, sd_round_cone(p, W - a * 0.01, palm_c - a * 0.01 * hs, A.R_WRIST, 0.046 * hs), 0.025)
+            d = smin(d, sd_round_cone(p, W - a * 0.01, palm_c - a * 0.01 * hs, A.R_WRIST, 0.056 * hs), 0.025)
             return d
         parts["palm"] = palm
 
@@ -467,8 +467,8 @@ class Rig:
                 di = sd_round_cone(p, tp[i], tp[i + 1], tr[i], tr[i + 1])
                 d = di if d is None else np.minimum(d, di)
             # thenar eminence (muscle pad at the base of the thumb)
-            d = smin(d, sd_ellipsoid(p, hp(0.034, 0.030, 0.014),
-                                     tuple(x * hs for x in (0.036, 0.027, 0.021)), axes=frame), 0.016 * hs)
+            d = smin(d, sd_ellipsoid(p, hp(0.034, 0.042, 0.017),
+                                     tuple(x * hs for x in (0.038, 0.032, 0.026)), axes=frame), 0.016 * hs)
             return d
         parts["thumb"] = thumb
         return parts
@@ -498,8 +498,8 @@ class Rig:
         def f(p):
             leg = smin(sd_round_cone(p, hip_top, self.knee, R[0], R[1]),
                        sd_round_cone(p, self.knee, self.ankle, R[1], R[2]), 0.02)
-            heel = sd_ellipsoid(p, self.heel_c, (0.084, 0.088, 0.072), axes=frame)
-            toe = sd_ellipsoid(p, self.toe_c, (0.104, 0.140, 0.074), axes=frame)
+            heel = sd_ellipsoid(p, self.heel_c, (0.102, 0.110, 0.082), axes=frame)
+            toe = sd_ellipsoid(p, self.toe_c, (0.128, 0.178, 0.086), axes=frame)
             foot = smin(heel, toe, 0.06)
             d = smin(leg, foot, 0.045)
             # flat sole with a rounded rim
@@ -513,8 +513,8 @@ class Rig:
         return pts.min(0) - 0.12, pts.max(0) + 0.12
 
     def leg_bounds(self):
-        return (np.array([self.hip[0] - 0.16, -0.30, -0.03]),
-                np.array([self.hip[0] + 0.16, 0.16, self.hip[2] + 0.13]))
+        return (np.array([self.hip[0] - 0.20, -0.42, -0.03]),
+                np.array([self.hip[0] + 0.21, 0.22, self.hip[2] + 0.17]))
 
     # --- skin weight groups ---------------------------------------------------------
     def arm_weight_groups(self):

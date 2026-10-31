@@ -250,7 +250,7 @@ def build_phone(collection, screen_image):
         # shallow screen recess on the front (-Y)
         q2 = np.abs(p[:, [0, 2]]) - (np.array([hw - SCREEN_INSET, hh - SCREEN_INSET]) - 0.015)
         d3 = length(np.maximum(q2, 0)) + np.minimum(np.max(q2, axis=-1), 0) - 0.015
-        recess = np.maximum(d3, -(p[:, 1] + ht - 0.0012))
+        recess = np.maximum(d3, p[:, 1] + ht - 0.0012)     # only a 1.2 mm deep pocket on the front
         return round_intersect(d, -recess, 0.0008)
     v, f = mesh_sdf(body, (-hw - 0.01, -ht - 0.01, -hh - 0.01), (hw + 0.01, ht + 0.01, hh + 0.01), 0.0016,
                     relax_iters=3)
@@ -297,7 +297,8 @@ def draw_screen_image(name="PhoneScreen_UI", w=360, h=720):
     """Paints the phone UI (energy tile + bulb/home tiles) into an image."""
     img = np.zeros((h, w, 4), dtype=np.float32)
     yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
-    yy = h - 1 - yy        # image rows go bottom-up in Blender
+    # numpy row 0 is written as the bottom row of the Blender image, and the
+    # screen's v coordinate grows towards the top of the phone: no flip needed
 
     def rrect(x0, y0, x1, y1, r):
         cx = np.clip(xx, x0 + r, x1 - r)

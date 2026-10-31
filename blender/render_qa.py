@@ -65,6 +65,9 @@ def hands():
     for o in bpy.data.objects:
         if o.type == "MESH" and o.name.startswith("MASCOT_") and o.name != "MASCOT_ArmHand.L":
             o.hide_render = True
+    cyc = bpy.data.objects.get("STUDIO_Cyclorama")
+    if cyc:
+        cyc.hide_render = True          # close-ups: plain studio background, no wall in the way
     for name, act in lib.items():
         rig.animation_data.action = act
         scene.frame_set(0)
@@ -77,14 +80,20 @@ def hands():
         a = (hm.to_3x3() @ Vector((0, 1, 0))).normalized()
         n = (hm.to_3x3() @ Vector((0, 0, 1))).normalized()
         x = (hm.to_3x3() @ Vector((1, 0, 0))).normalized()
-        c = hm.translation + a * 0.10
+        # frame every fingertip and the wrist
+        tips = [hm.translation] + [rig.matrix_world @ rig.pose.bones[f"DEF_{f}_03.L"].tail
+                                   for f in ("Index", "Middle", "Ring", "Thumb")]
+        c = sum(tips, Vector()) / len(tips)
+        rad = max((t - c).length for t in tips) + 0.05
+        if name == "phone":
+            rad = max(rad, 0.20)
         for vname, d in (("palm", n), ("back", -n), ("thumb_side", -x), ("pinky_side", x)):
-            cam.location = c + d.normalized() * 0.78
+            cam.location = c + d.normalized() * (rad / math.tan(math.radians(12)) )
             cam.rotation_euler = (c - cam.location).to_track_quat("-Z", "Z").to_euler()
             cam.data.lens = 85
             render(os.path.join(OUT, f"hand_{name}_{vname}.png"), (420, 420), 32)
     for o in bpy.data.objects:
-        if o.name.startswith(("MASCOT_", "PROP_")) and not o.name.startswith("MASCOT_EyeHappy_hidden"):
+        if o.name.startswith(("MASCOT_", "PROP_", "STUDIO_")):
             o.hide_render = False
 
 

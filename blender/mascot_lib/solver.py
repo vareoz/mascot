@@ -19,7 +19,7 @@ from mathutils import Euler, Matrix
 from . import design as D
 from .sdf import sd_round_box
 
-FINGERS = ["Index", "Middle", "Ring", "Pinky"]
+FINGERS = ["Index", "Middle", "Ring"]   # thumb + 3 fingers (4 digits per hand)
 
 
 def euler_m(deg, order="XYZ"):
@@ -84,13 +84,15 @@ def solve_thumb_over_fingers(fk, finger_angles, target_fingers=("Index", "Middle
     tgt = []
     for f in FINGERS:
         P, Rr, S = fk.capsules(f, finger_angles[f])
-        others.append((P, Rr))
+        keep = ~((S == 0) & (np.arange(len(S)) % 7 < 3))     # knuckle ends are buried in the palm
+        others.append((P[keep], Rr[keep]))
         if f in target_fingers:
             ch = fk.chain(f, finger_angles[f])
             name, M, L = ch[1]
             centre = np.array(M.translation) + np.array(M.col[1].xyz) * L * 0.5
-            dorsal = -np.array(M.col[2].xyz)
-            tgt.append(centre + dorsal * (fk.radii[name][0] + fk.radii[f"DEF_Thumb_03.{fk.side}"][0]) * 1.18)
+            # the thumb rests against the thumb-side face of the curled finger (local -X)
+            thumb_side = -np.array(M.col[0].xyz)
+            tgt.append(centre + thumb_side * (fk.radii[name][0] + fk.radii[f"DEF_Thumb_03.{fk.side}"][0]) * 1.08)
     target = np.mean(tgt, 0)
     best = None
     rng = np.random.default_rng(3)
@@ -100,7 +102,7 @@ def solve_thumb_over_fingers(fk, finger_angles, target_fingers=("Index", "Middle
         pen = 0.0
         for Q, Rq in others:
             g = capsule_gap(P[S > 0], Rr[S > 0], Q, Rq)
-            pen += max(0.0, 0.0045 - g)          # keep a small air gap to the fingers
+            pen += max(0.0, 0.0025 - g)          # keep a small air gap to the fingers
         distal = P[S == 2].mean(0)
         return np.linalg.norm(distal - target) + 25 * pen
 
@@ -236,19 +238,38 @@ def solve_spreads(fk, curls, rng_deg=18, step=3):
     """Pick per-finger spread angles that keep curled neighbours from touching."""
     best = None
     vals = np.arange(-rng_deg, rng_deg + 0.1, step)
-    for s0 in vals:
-        for s1 in vals[np.abs(vals) <= 4]:
-            for s2 in vals:
-                for s3 in vals:
-                    sp = (s0, s1, s2, s3)
-                    ang = {f: [(c[0], 0, sp[i]), (c[1], 0, 0), (c[2], 0, 0)]
-                           for i, (f, c) in enumerate(zip(FINGERS, curls))}
-                    cl = finger_clearances(fk, {f: ang[f] for f in FINGERS})
-                    adj = min(cl["Index-Middle"], cl["Middle-Ring"], cl["Ring-Pinky"])
-                    score = -min(adj, 0.0015) + 0.00002 * sum(abs(x) for x in sp)
-                    if best is None or score < best[0]:
-                        best = (score, sp, adj)
+    mid = vals[np.abs(vals) <= 4]
+    n = len(curls)
+    choices = [mid if (i == n // 2) else vals for i in range(n)]
+    for sp in itertools.product(*choices):
+        ang = {f: [(c[0], 0, sp[i]), (c[1], 0, 0), (c[2], 0, 0)]
+               for i, (f, c) in enumerate(zip(FINGERS, curls))}
+        cl = finger_clearances(fk, ang)
+        adj = min(cl[f"{FINGERS[i]}-{FINGERS[i + 1]}"] for i in range(n - 1))
+        score = -min(adj, 0.0015) + 0.00002 * sum(abs(x) for x in sp)
+        if best is None or score < best[0]:
+            best = (score, tuple(float(x) for x in sp), adj)
     return best[1], best[2]
+
+
+def solve_curl_against_palm(fk, finger, palm_sdf, spread=0.0):
+    """Curl a finger into a fist: the pad of the last phalanx rests on the palm
+    (gap ~0.5-1 mm), the distal phalanx never sinks into it and the middle one
+    only presses into the soft palm fillet at the knuckle crease (<= 8 mm)."""
+    best = None
+    for c1 in np.arange(40, 96, 3):
+        for c2 in np.arange(50, 116, 4):
+            for c3 in np.arange(10, 91, 5):
+                P, Rr, S = fk.capsules(finger, [(c1, 0, spread), (c2, 0, 0), (c3, 0, 0)])
+                idx = np.arange(len(S)) % 7
+                g2 = palm_sdf(P[(S == 1) & (idx >= 2)]) - Rr[(S == 1) & (idx >= 2)]
+                g3a = palm_sdf(P[S == 2]) - Rr[S == 2]
+                pen = np.maximum(0, -g3a - 0.0005).sum() + np.maximum(0, -g2 - 0.008).sum()
+                g3 = g3a.min()
+                s = 30 * pen + abs(g3 - 0.0008) + 0.0004 * abs(c1 - 75) / 10
+                if best is None or s < best[0]:
+                    best = (s, (float(c1), float(c2), float(c3)), g3, pen)
+    return best[1], best[2], best[3]
 
 
 def phone_surface_samples(box, n=14):

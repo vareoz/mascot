@@ -64,6 +64,7 @@ def main():
 
     from mascot_lib import poses as PO
     PO.solve_hand_poses(rig, log=A.log)          # contact solver: fist, point, phone grip
+    PO.refine_phone_clearance(rig, objs["Arm.L"][0], log=A.log)
     phone, screen = G.build_phone(cols["acc"], screen_img)
     M.assign(phone, mats["phone"])
     M.assign(screen, mats["screen"])

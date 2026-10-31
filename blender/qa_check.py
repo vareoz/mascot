@@ -31,7 +31,7 @@ os.makedirs(OUT, exist_ok=True)
 rig = bpy.data.objects["MASCOT_Rig"]
 scene = bpy.context.scene
 ANIMS = ["Idle", "Wave", "Celebrate", "Walk", "Phone", "Fist", "Present"]
-HAND_BONES = ("DEF_Hand", "DEF_Index", "DEF_Middle", "DEF_Ring", "DEF_Pinky", "DEF_Thumb")
+HAND_BONES = ("DEF_Hand", "DEF_Index", "DEF_Middle", "DEF_Ring", "DEF_Thumb")
 
 
 def evaluated(ob):
@@ -62,7 +62,7 @@ def body_space(points):
     return p[:, :3]
 
 
-CHAINS = ("Index", "Middle", "Ring", "Pinky", "Thumb")
+CHAINS = ("Index", "Middle", "Ring", "Thumb")
 
 
 def dominant_chains(ob):
@@ -116,8 +116,8 @@ def main():
         act = bpy.data.actions[name]
         rig.animation_data.action = act
         s, e = int(act.frame_range[0]), int(act.frame_range[1])
-        worst = dict(floor_mm=1e9, hand_in_body_mm=0.0, phone_in_body_mm=0.0, digit_collisions=0,
-                     crease_overlaps=0, body_scale_dev=0.0)
+        worst = dict(floor_mm=1e9, hand_in_body_mm=0.0, phone_in_body_mm=0.0, hand_in_phone_mm=0.0,
+                     digit_collisions=0, crease_overlaps=0, body_scale_dev=0.0)
         for f in range(s, e + 1, 2):
             scene.frame_set(f)
             cog_z = rig.pose.bones["CTRL_COG"].location.z
@@ -137,6 +137,13 @@ def main():
                 v, _ = evaluated(phone)
                 d = D.BODY(body_space(v))
                 worst["phone_in_body_mm"] = max(worst["phone_in_body_mm"], float(-d.min() * 1000) if d.min() < 0 else 0)
+                # hand vs phone: phone box in its own (posed) frame
+                pm = np.array(phone.matrix_world.inverted())
+                hv, _ = evaluated(arms[0])
+                loc = np.c_[hv, np.ones(len(hv))] @ pm.T
+                q = np.abs(loc[:, :3]) - (np.array([D.Phone.W, D.Phone.T, D.Phone.H]) / 2 - 0.006)
+                dbox = np.linalg.norm(np.maximum(q, 0), axis=1) + np.minimum(q.max(1), 0) - 0.006
+                worst["hand_in_phone_mm"] = max(worst["hand_in_phone_mm"], float(-dbox.min() * 1000) if dbox.min() < 0 else 0)
             sc = rig.pose.bones["DEF_BodyShape"].scale
             worst["body_scale_dev"] = max(worst["body_scale_dev"], max(abs(c - 1) for c in sc))
         worst = {k: round(v, 3) if isinstance(v, float) else v for k, v in worst.items()}
@@ -165,11 +172,12 @@ def main():
              "teléfono dentro del cuerpo; pares de triángulos que se cruzan **entre dedos distintos**; pares que "
              "se solapan dentro del pliegue interior de una articulación flexionada (piel comprimida, no visible); "
              "variación máxima de escala del cuerpo (respiración / squash).", "",
-             "| Animación | Suela mín. (mm) | Mano en cuerpo (mm) | Teléfono en cuerpo (mm) "
+             "| Animación | Suela mín. (mm) | Mano en cuerpo (mm) | Teléfono en cuerpo (mm) | Mano en teléfono (mm) "
              "| Choques entre dedos | Solapes en pliegues | Escala cuerpo |",
-             "|---|---|---|---|---|---|---|"]
+             "|---|---|---|---|---|---|---|---|"]
     for k, w in report["clips"].items():
         lines.append(f"| {k} | {w['floor_mm']:.1f} | {w['hand_in_body_mm']:.1f} | {w['phone_in_body_mm']:.1f} "
+                     f"| {w['hand_in_phone_mm']:.1f} "
                      f"| {w['digit_collisions']} | {w['crease_overlaps']} | {w['body_scale_dev'] * 100:.1f}% |")
     lines += ["", "| Pose de mano | Choques entre dedos | Solapes en pliegues |", "|---|---|---|"]
     for k, w in report["hand_poses"].items():

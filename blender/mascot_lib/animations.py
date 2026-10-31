@@ -41,21 +41,32 @@ def frame_from_axes(y_axis, z_axis, pos):
 
 
 def place(rig, name, M):
-    """Set a pose bone from an armature-space matrix and return its channels."""
-    pb = rig.pose.bones[name]
-    pb.matrix = M
-    bpy.context.view_layer.update()
-    ch = {"l": tuple(pb.location)}
-    if pb.rotation_mode == "QUATERNION":
-        ch["q"] = tuple(pb.rotation_quaternion)
+    """Channels that put a control (parented to the static CTRL_Root) at the
+    armature-space matrix M.  Pure maths: no scene evaluation, so keys that
+    already exist on the action can never leak into the result."""
+    basis = rest(rig, name).inverted() @ M
+    loc, quat, _ = basis.decompose()
+    ch = {"l": tuple(loc)}
+    if rig.pose.bones[name].rotation_mode == "QUATERNION":
+        ch["q"] = tuple(quat)
     else:
-        ch["r"] = tuple(math.degrees(a) for a in pb.rotation_euler)
+        ch["r"] = tuple(math.degrees(a) for a in quat.to_euler(rig.pose.bones[name].rotation_mode))
     return ch
 
 
-def hand_target(rig, side, wrist, fingers_dir, palm_normal):
+ARM_REACH = 0.94 * (D.Arm.UPPER_LEN + D.Arm.FORE_LEN)
+
+
+def hand_target(rig, side, wrist, fingers_dir, palm_normal, shoulder_offset=(0, 0, 0)):
+    """IK hand target; the wrist is pulled back inside the arm's reach so the
+    elbow always keeps a little bend (no snapping straight)."""
+    s = Vector(D.RIG.S if side == "L" else D.mirror(D.RIG.S)) + Vector(shoulder_offset)
+    w = Vector(wrist)
+    d = w - s
+    if d.length > ARM_REACH:
+        w = s + d.normalized() * ARM_REACH
     return {f"CTRL_IK_Hand.{side}": place(rig, f"CTRL_IK_Hand.{side}",
-                                         frame_from_axes(fingers_dir, palm_normal, wrist))}
+                                         frame_from_axes(fingers_dir, palm_normal, w))}
 
 
 def pole(rig, name, pos):
@@ -70,7 +81,7 @@ def foot_target(rig, side, ankle, pitch=0.0, yaw=0.0):
     s = 1 if side == "L" else -1
     fwd = Vector(D.mirror(D.RIG.foot_fwd) if s < 0 else D.RIG.foot_fwd)
     sideax = fwd.cross(Vector((0, 0, 1))).normalized()
-    rot = Matrix.Rotation(math.radians(-pitch), 4, sideax) @ Matrix.Rotation(math.radians(yaw), 4, "Z")
+    rot = Matrix.Rotation(math.radians(pitch), 4, sideax) @ Matrix.Rotation(math.radians(yaw), 4, "Z")
     M = Matrix.Translation(Vector(ankle)) @ rot @ Matrix.Translation(-r.translation) @ r
     return {name: place(rig, name, M)}
 
@@ -140,6 +151,28 @@ def lerp_pose(a, b, t):
     return out
 
 
+def smooth01(x):
+    x = max(0.0, min(1.0, x))
+    return x * x * (3 - 2 * x)
+
+
+def close_hands(open_pose, fist_pose, c):
+    """Blend open -> fist with the fingers closing pinky-first and the thumb
+    folding over only once the fingers are curled (and opening first), so the
+    thumb never cuts through the index finger on the way."""
+    out = {}
+    order = {"Ring": 0.0, "Middle": 0.09, "Index": 0.18}
+    for name in set(open_pose) | set(fist_pose):
+        if "Thumb" in name:
+            w = smooth01((c - 0.45) / 0.55)
+        else:
+            d = next((v for k, v in order.items() if k in name), 0.0)
+            w = smooth01((c - d) / (1 - 0.18))
+        out.update(lerp_pose({name: open_pose.get(name, fist_pose.get(name))},
+                             {name: fist_pose.get(name, open_pose.get(name))}, w))
+    return out
+
+
 def eyes(look=(0.0, 0.0), blink=1.0, happy=0.0):
     """look: (x, z) offset; blink: 1 open .. 0 closed; happy: 0..1 swaps to ^ ^ arcs."""
     hide = D.Face.HAPPY_HIDE
@@ -203,8 +236,8 @@ def anim_wave(rig):
     rest_w = Vector(D.mirror(R.W))
     rest_a = Vector(D.mirror(R.a))
     rest_n = Vector(D.mirror(R.n))
-    up_w = Vector((-0.60, -0.12, 1.17))
-    for f in range(0, n + 1, 2):
+    up_w = Vector((-0.56, -0.11, 1.08))
+    for f in range(0, n + 1):
         # raise 0-14, wave 14-58, lower 58-72
         if f <= 14:
             k = f / 14
@@ -225,18 +258,19 @@ def anim_wave(rig):
                      pole(rig, "CTRL_Pole_Arm.R", (-0.85, 0.35, 0.62)),
                      breath(f / n, 0.6),
                      {"DEF_Body": {"r": (0, -4 * k, 3 * k + 1.0 * wave * k)},
-                      "CTRL_COG": {"l": (0, 0, 0.006 * k * abs(math.sin((f - 14) / 20 * math.pi)))}},
+                      "CTRL_COG": {"l": (0, 0, 0)}},
                      hand_pose("relaxed", "L"),
                      {"FK_UpperArm.L": {"r": (0, 0, -3 * k)}, "FK_Forearm.L": {"r": (-8, 0, 0)}},
                      eyes(look=(-0.006 * k, 0.003 * k)), smile(1.0 + 0.18 * k, 0.002 * k))
         # fingers: open wave hand with a small ripple through the fingers
         hp = lerp_pose(hand_pose("relaxed", "R"), hand_pose("wave", "R"), k)
         for i, fn in enumerate(P.FINGERS):
-            wig = 9 * k * math.sin((f - 14) / 6 * math.pi - i * 0.9) if 14 <= f <= 58 else 0
+            wig = 24 * k * math.sin((f - 14) / 6 * math.pi - i * 0.9) if 14 <= f <= 58 else 0
+            wig = wig if wig > 0 else 0.35 * wig          # curl in, then re-extend a little
             for j in (1, 2):
                 bn = f"DEF_{fn}_{j:02d}.R"
                 r = hp[bn]["r"]
-                hp[bn] = {"r": (r[0] + max(0, wig) * (1.0 if j == 1 else 0.6), r[1], r[2])}
+                hp[bn] = {"r": (r[0] + wig * (1.0 if j == 1 else 0.7), r[1], r[2])}
         key(rig, f, merge(pose, hp))
     finish_action(rig, act, True)
 
@@ -257,7 +291,7 @@ def anim_celebrate(rig):
     keys = [(0, 0.0, 0.0, 0.0, 0.0, 0.0), (6, -0.055, -1.0, 0.25, 0.0, 0.3), (10, -0.06, -1.0, 0.5, 0.0, 1.0),
             (14, 0.05, 0.6, 1.0, 0.02, 1.0), (19, 0.20, 0.25, 1.0, 0.13, 1.0), (23, 0.235, 0.0, 1.0, 0.16, 1.0),
             (27, 0.20, 0.1, 1.0, 0.12, 1.0), (31, 0.06, 0.4, 1.0, 0.02, 1.0), (33, 0.0, 0.0, 1.0, 0.0, 1.0),
-            (36, -0.05, -0.9, 0.9, 0.0, 1.0), (42, 0.01, 0.2, 1.0, 0.0, 1.0), (48, 0.0, 0.0, 1.0, 0.0, 1.0),
+            (36, -0.05, -0.9, 0.9, 0.0, 1.0), (42, 0.0, 0.2, 1.0, 0.0, 1.0), (48, 0.0, 0.0, 1.0, 0.0, 1.0),
             (60, 0.0, 0.0, 0.0, 0.0, 0.0)]
     for f, cz, sq, up, fz, happy in keys:
         pose = {"CTRL_COG": {"l": (0, 0, cz)},
@@ -265,20 +299,20 @@ def anim_celebrate(rig):
                 "DEF_Body": {"r": (-3 * up if f < 48 else 0, 0, 0)}}
         for s, sg in (("L", 1), ("R", -1)):
             w0, a0, n0 = rest_hand[s]
-            w_up = Vector((sg * 0.50, -0.07, 1.36 + cz))
+            w_up = Vector((sg * 0.52, -0.06, 1.12 + cz))
             a_up = Vector((sg * 0.12, -0.05, 1.0)).normalized()
             n_up = Vector((-sg * 1.0, 0.0, 0.1)).normalized()
             k = up * up * (3 - 2 * up)
             pose.update(hand_target(rig, s, w0.lerp(w_up, k), a0.lerp(a_up, k).normalized(),
-                                    n0.lerp(n_up, k).normalized()))
+                                    n0.lerp(n_up, k).normalized(), shoulder_offset=(0, 0, cz)))
             pose.update(pole(rig, f"CTRL_Pole_Arm.{s}", (sg * 0.95, 0.15, 0.95 + cz)))
             # feet tuck up during the jump and stay planted otherwise
             pitch = -18 if fz > 0.05 else 0
             pose.update(foot_target(rig, s, ank[s] + Vector((0, 0.02 if fz > 0.05 else 0, fz)), pitch))
             pose.update(pole(rig, f"CTRL_Pole_Leg.{s}", tuple(Vector(D.RIG.knee if s == "L" else D.mirror(D.RIG.knee))
                                                              + Vector((0, -0.45, cz)))))
-        fist = lerp_pose(merge(hand_pose("relaxed", "L"), hand_pose("relaxed", "R")),
-                         merge(hand_pose("fist", "L"), hand_pose("fist", "R")), min(1.0, up * 1.3))
+        fist = close_hands(merge(hand_pose("relaxed", "L"), hand_pose("relaxed", "R")),
+                           merge(hand_pose("fist", "L"), hand_pose("fist", "R")), min(1.0, up * 1.3))
         pose = merge(pose, fist, eyes(happy=happy), smile(1 + 0.3 * happy, 0.004 * happy))
         key(rig, f, pose)
     finish_action(rig, act, False)
@@ -314,7 +348,7 @@ def anim_walk(rig, leg_ob):
     def ankle_height(pitch):
         side = np.cross(fwd, [0, 0, 1.0])
         side /= np.linalg.norm(side)
-        a = math.radians(-pitch)
+        a = math.radians(pitch)          # same convention as foot_target: + lifts the toes
         rel = sole - ankle_rest
         rot = rel * math.cos(a) + np.cross(side, rel) * math.sin(a) + np.outer(rel @ side, side) * (1 - math.cos(a))
         return -rot[:, 2].min() + 0.0005
@@ -401,8 +435,14 @@ def anim_phone(rig):
     a_g = Vector((0.25, -1.0, 0.25)).normalized()
     n_g = Vector((0.15, 0.1, 1.0)).normalized()
     for f in range(0, n + 1, 2):
-        k = min(1.0, f / 14) if f < 82 else max(0.0, 1 - (f - 82) / 14)
-        k = k * k * (3 - 2 * k)
+        k = 1.0          # the phone is held up for the whole loop
+        sway = math.sin(2 * math.pi * f / n)
+        Mp_f = Matrix.Translation(Vector((0.0, 0.0, 0.012 * sway))) @ Mp @ \
+            Matrix.Rotation(math.radians(4 * sway), 4, "Z")
+        Mh = Mp_f @ rel.inverted()
+        w_phone = Mh.translation.copy()
+        a_out_h = (Mh.to_3x3() @ Vector((0, 1, 0))).normalized()
+        n_fw_h = (Mh.to_3x3() @ Vector((0, 0, 1))).normalized()
         g = 0.0
         if 20 <= f <= 76:
             g = min(1.0, (f - 20) / 12) if f < 64 else max(0.0, 1 - (f - 64) / 12)
@@ -417,9 +457,7 @@ def anim_phone(rig):
                                        a1.lerp(a_g, g).normalized(), n1.lerp(n_g, g).normalized()),
                      pole(rig, "CTRL_Pole_Arm.R", (-0.95, 0.30, 0.55)))
         grip = lerp_pose(hand_pose("relaxed", "L"), hand_pose("phone", "L"), min(1.0, k * 1.15))
-        # the phone pops into the hand once it is away from the body, and out again at the end
-        ps = float(np.interp(f, [0, 6, 10, 12, 14, 80, 84, 88, 96], [0.001, 0.001, 1.08, 0.97, 1, 1, 1.05, 0.001, 0.001]))
-        grip["DEF_Prop.L"] = {"s": (ps, ps, ps)}
+        grip["DEF_Prop.L"] = {"s": (1.0, 1.0, 1.0)}
         free = lerp_pose(hand_pose("relaxed", "R"), hand_pose("open", "R"), g)
         pose = merge(pose, grip, free, breath(f / n, 0.6),
                      {"DEF_Body": {"r": (0, 5 * k, -2 * k + 1.0 * bob)}},
@@ -459,7 +497,7 @@ def anim_fist(rig):
             nn = Vector((sg * 0.25, -1.0, 0.0)).normalized()
             pose.update(hand_target(rig, s, w, a, nn))
             pose.update(pole(rig, f"CTRL_Pole_Arm.{s}", (sg * 0.95, 0.25, 0.60)))
-        pose = merge(pose, lerp_pose(open_, fist, c), breath(f / n, 0.5),
+        pose = merge(pose, close_hands(open_, fist, c), breath(f / n, 0.5),
                      {"DEF_Body": {"r": (-2 * c, 0, 0)}, "CTRL_COG": {"l": (0, 0, -0.008 * c)}},
                      eyes(blink=1 - 0.25 * c), smile(1 - 0.12 * c))
         key(rig, f, pose)
@@ -476,10 +514,10 @@ def anim_present(rig):
     base_keys(rig, 0, arms_ik=(0.0, 1.0))
     R = D.RIG
     w0, a0, n0 = Vector(D.mirror(R.W)), Vector(D.mirror(R.a)), Vector(D.mirror(R.n))
-    w1 = Vector((-0.80, -0.20, 0.98))
+    w1 = Vector((-0.64, -0.13, 0.93))
     a1 = Vector((-1.0, -0.30, 0.10)).normalized()
     n1 = Vector((0.0, -0.25, -1.0)).normalized()
-    over = Vector((-0.83, -0.21, 1.00))
+    over = Vector((-0.66, -0.14, 0.95))
     for f in range(0, n + 1, 2):
         # anticipation 0-6, point 6-18 (overshoot), settle 18-24, hold
         if f <= 6:
