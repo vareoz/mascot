@@ -298,16 +298,17 @@ class Arm:
 class Hand:
     SCALE = 1.12                         # overall hand size (all hand numbers below are pre-scale)
     PALM_LEN = 0.098                     # wrist -> knuckle line
-    PALM_HALF = (0.050, 0.088, 0.030)    # along a, t, n
+    PALM_HALF = (0.050, 0.098, 0.032)    # along a, t, n
     # classic cartoon hand: thumb + three chunky fingers
     # (name, t offset at knuckle, radius, length, fan angle deg)
-    FINGERS = [("Index", 0.0580, 0.0250, 0.074, 8.0),
-               ("Middle", 0.0000, 0.0258, 0.080, 0.0),
-               ("Ring", -0.0580, 0.0246, 0.072, -9.0)]
+    # very thick fingers kept close together (a narrow crease between them, never fused)
+    FINGERS = [("Index", 0.0665, 0.0310, 0.070, 1.0),
+               ("Middle", 0.0000, 0.0318, 0.076, 0.0),
+               ("Ring", -0.0665, 0.0306, 0.068, -1.2)]
     SEG = (0.48, 0.29, 0.23)              # long proximal phalanx: room to curl round the thick palm
     REST_CURL = (5.0, 8.0, 6.0)
     THUMB_SEG = (0.044, 0.032, 0.029)
-    THUMB_R = (0.0292, 0.0270, 0.0255)
+    THUMB_R = (0.0340, 0.0315, 0.0298)
     THUMB_REST_CURL = (0.0, 8.0, 10.0)
 
 
@@ -376,11 +377,11 @@ class Rig:
                 cur = normalize(rot(hinge, curl, cur))      # +angle flexes towards the palm (n)
                 pts.append(pts[-1] + cur * L * seg)
                 dirs.append(cur)
-            radii = [r, r * 0.965, r * 0.93, r * 0.90]
+            radii = [r, r * 0.985, r * 0.97, r * 0.955]     # chunky, barely tapering
             self.fingers[name] = dict(pts=pts, radii=radii, n=n, dir=d)
 
         # thumb
-        cmc = hp(0.030, 0.052, 0.014)
+        cmc = hp(0.030, 0.060, 0.016)
         td = normalize(a * 0.66 + t * 0.70 + n * 0.22)
         tz = normalize(n - t * 0.35)
         tz = normalize(tz - td * (td @ tz))
@@ -435,10 +436,10 @@ class Rig:
         def palm(p):
             d = sd_round_box(p, palm_c, PH, 0.024 * hs, axes=frame)
             # soft dorsal dome
-            d = smin(d, sd_ellipsoid(p, palm_c - n * 0.004 * hs, tuple(x * hs for x in (0.050, 0.080, 0.030)),
+            d = smin(d, sd_ellipsoid(p, palm_c - n * 0.004 * hs, tuple(x * hs for x in (0.050, 0.090, 0.032)),
                                      axes=frame), 0.01 * hs)
             # hypothenar pad (pinky side of the palm)
-            d = smin(d, sd_ellipsoid(p, hp(0.050, -0.058, 0.015),
+            d = smin(d, sd_ellipsoid(p, hp(0.050, -0.066, 0.015),
                                      tuple(x * hs for x in (0.042, 0.026, 0.020)), axes=frame), 0.012 * hs)
             # palm hollow (shallow cup in the centre of the palm)
             d = ssub(d, sd_ellipsoid(p, hp(0.060, 0.002, 0.044),
@@ -484,7 +485,7 @@ class Rig:
             digits = [smin(base, g(p), 0.015) for g in fingers]
             d = digits[0]
             for di in digits[1:]:
-                d = smin(d, di, 0.013)     # small web fillet only where fingers nearly touch
+                d = smin(d, di, 0.007)     # tiny web fillet: fingers stay separate
             return d
         return f
 

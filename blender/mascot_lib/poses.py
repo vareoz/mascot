@@ -139,13 +139,13 @@ HAND_POSES = {
     "open": merge(fingers([(-6, -4, -2), (-6, -4, -2), (-6, -4, -2)], (11, 0, -13)),
                   thumb((0, 0, 14), (-6, 0, 0), (-8, 0, 0))),
     # natural resting hand, fingers gently curved
-    "relaxed": merge(fingers([(14, 18, 12), (18, 22, 14), (23, 26, 16)], (2, 0, -3)),
+    "relaxed": merge(fingers([(14, 18, 12), (18, 22, 14), (23, 26, 16)], (0.5, 0, -0.5)),
                      thumb((4, 0, -4), (10, 0, 0), (12, 0, 0))),
     # closed fist, thumb wrapped over the middle phalanges of index and middle
     "fist": merge(fingers([(84, 96, 62), (86, 98, 62), (88, 98, 62)], (3, 0, -3)),
                   thumb((22, -28, -38), (34, 0, 0), (38, 0, 0))),
     # waving: open, fingers together but separated, slightly bent back
-    "wave": merge(fingers([(-4, -2, 0), (-4, -2, 0), (-4, -2, 0)], (6, 0, -8)),
+    "wave": merge(fingers([(-4, -2, 0), (-4, -2, 0), (-4, -2, 0)], (2, 0, -2)),
                   thumb((0, 0, 8), (-4, 0, 0), (-4, 0, 0))),
     # pointing with the index finger
     "point": merge(fingers([(-4, -2, 0), (86, 98, 62), (88, 98, 62)], (2, 0, -3)),
@@ -196,13 +196,13 @@ def solve_hand_poses(rig, log=print):
         log(f"[poses] {name}: thumb {th} score {s:.4f}; finger clearances "
             + ", ".join(f"{k} {v * 1000:.1f}mm" for k, v in SV.finger_clearances(fk, fa).items()))
 
-    spreads = {"Index": 3.0, "Middle": 0.0, "Ring": -4.0}
+    spreads = {"Index": 0.5, "Middle": 0.0, "Ring": -0.5}
     SV.solve_phone_placement(fk, D.RIG, spreads, log=log)
     solve_phone_grip(fk, spreads, log)
     return HAND_POSES
 
 
-PHONE_SPREADS = {"Index": 3.0, "Middle": 0.0, "Ring": -4.0}
+PHONE_SPREADS = {"Index": 0.5, "Middle": 0.0, "Ring": -0.5}
 
 
 def solve_phone_grip(fk, spreads=PHONE_SPREADS, log=print):
