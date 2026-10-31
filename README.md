@@ -15,8 +15,8 @@ la boca y cada dedo son geometría 3D real.
 | Archivo | Contenido |
 |---|---|
 | `export/mascot.blend` | Proyecto editable de Blender 4.2: mallas, materiales, rig IK/FK con controles, 7 acciones, biblioteca de poses de mano, estudio de iluminación y cámara. |
-| `export/mascot.glb` | Modelo para web / tiempo real: mallas, materiales PBR, esqueleto (54 huesos de deformación), skinning y 7 animaciones. |
-| `export/mascot.fbx` | Mismo contenido para motores y DCCs (Unity, Unreal, Maya…). |
+| `export/mascot.glb` | Modelo para web / tiempo real: mallas, materiales PBR, esqueleto (48 huesos de deformación), skinning y 7 animaciones. |
+| `export/mascot.fbx` | Mismo contenido para motores y DCCs (Unity, Unreal, Maya…). Incluye además `CTRL_Root` y `CTRL_COG` como raíz de la jerarquía (50 huesos). |
 | `web/index.html` | Visor web en three.js que carga el GLB real (órbita, cambio de animación, ver esqueleto). |
 | `renders/` | Renders de control: turnaround, hoja de poses de mano, hojas de cada animación, renders “hero” e informe de QA. |
 | `blender/` | Código fuente del personaje (ver “Cómo reconstruirlo”). |
@@ -92,7 +92,7 @@ El build tarda unos 2–3 minutos en CPU y es determinista.
   hipotenar, ligero hueco palmar). Los dedos están separados en la malla de reposo.
 * **Piernas y pies**: piernas negras cortas y gruesas, pies grandes redondeados con suela plana, ligeramente abiertos.
 * **Topología**: quads limpios (QuadriFlow) re-proyectados sobre la superficie analítica.
-  Unos 118 000 triángulos en total en el GLB.
+  Unos 139 000 triángulos en total en el GLB.
 
 ## Rig
 
@@ -166,7 +166,7 @@ Ninguna animación usa movimientos de cámara.
 `blender/qa_check.py` mide sobre las mallas deformadas reales (cada 2 fotogramas de cada clip y cada pose de mano):
 suela respecto al suelo, manos y teléfono dentro del cuerpo, intersecciones entre dedos distintos (BVH de
 triángulos) y variación de escala del cuerpo. El resultado está en `renders/qa_report.md` y `renders/qa_report.json`.
-El visor web se probó en Chromium headless con el GLB exportado (las 7 animaciones y los 54 huesos se cargan y reproducen).
+El visor web se probó en Chromium headless con el GLB exportado (las 7 animaciones y los 48 huesos se cargan y reproducen).
 
 ## Decisiones de diseño y límites conocidos
 
@@ -174,7 +174,12 @@ El visor web se probó en Chromium headless con el GLB exportado (las 7 animacio
   (pulgar + tres), el estándar de las mascotas cartoon, con dedos gruesos y redondeados de estilo vinilo.
 * **Boca**: la referencia muestra a la vez una sonrisa pequeña y un gran triángulo negro. Se modelaron ambos: el
   triángulo como boca/emblema (con hueso propio) y la sonrisa como línea fina, también con control.
+* **Puño**: con dedos tan gruesos y cortos, el puño queda como una "bola" cartoon; el pulgar apoya en el lateral del
+  índice y el informe de QA registra un contacto leve entre ambos (unos 20 pares de triángulos) en el puño y en la
+  celebración. Es el único choque entre dígitos que queda.
 * **Pliegues de flexión**: con skinning lineal (el que usan glTF y three.js), la piel del interior de una articulación
   muy flexionada se comprime y algunos triángulos de ese pliegue interior se solapan. No es visible desde fuera
   y el informe de QA lo cuenta por separado de los choques entre dedos distintos.
-* **Escala**: 1 unidad = 1 m. El personaje mide unos 1,45 m con el cuerpo de 1 m.
+* **Proporciones**: medidas sobre la referencia (cuerpo ancho/alto ≈ 0,97; piernas + pies ≈ 36 % del alto del cuerpo;
+  brazos ≈ 18 % y piernas ≈ 20 % del ancho del cuerpo).
+* **Escala**: 1 unidad = 1 m. El personaje mide unos 1,5 m con un cuerpo de 1,1 m.
