@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mascota 3D</title>
+<style>
+  :root {
+    --bg: #f5eee3;
+    --panel: rgba(255, 252, 246, 0.86);
+    --ink: #2a2724;
+    --muted: #776f66;
+    --accent: #ff8a3d;
+    --line: rgba(42, 39, 36, 0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1f1d1b; --panel: rgba(40, 37, 34, 0.86); --ink: #f3ece2; --muted: #b5aa9c; --line: rgba(243, 236, 226, 0.14);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1f1d1b; --panel: rgba(40, 37, 34, 0.86); --ink: #f3ece2; --muted: #b5aa9c; --line: rgba(243, 236, 226, 0.14);
+  }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+  #view { position: fixed; inset: 0; }
+  canvas { display: block; touch-action: none; }
+  .ui { position: fixed; left: 16px; right: 16px; bottom: 16px; display: flex; flex-wrap: wrap; gap: 8px;
+    justify-content: center; pointer-events: none; }
+  .ui .bar { pointer-events: auto; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border-radius: 16px;
+    background: var(--panel); backdrop-filter: blur(10px); border: 1px solid var(--line); max-width: 100%; }
+  button { font: inherit; border: 0; border-radius: 10px; padding: 8px 12px; cursor: pointer; color: var(--ink);
+    background: transparent; }
+  button:hover { background: var(--line); }
+  button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+  .top { position: fixed; top: 16px; left: 16px; right: 16px; display: flex; justify-content: space-between;
+    align-items: flex-start; gap: 8px; pointer-events: none; }
+  .top .bar { pointer-events: auto; padding: 8px 12px; border-radius: 12px; background: var(--panel);
+    border: 1px solid var(--line); backdrop-filter: blur(10px); }
+  h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  .muted { color: var(--muted); font-size: 13px; }
+  #status { position: fixed; inset: 0; display: grid; place-items: center; color: var(--muted); pointer-events: none; }
+  label { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); padding: 0 6px; }
+</style>
+</head>
+<body>
+<div id="view"></div>
+<div id="status">Cargando modelo…</div>
+<div class="top">
+  <div class="bar"><h1>Mascota 3D</h1><div class="muted" id="info">Modelo GLB con esqueleto y animaciones</div></div>
+  <div class="bar"><label><input type="checkbox" id="bones"> Esqueleto</label><label><input type="checkbox" id="rotate"> Girar</label></div>
+</div>
+<div class="ui"><div class="bar" id="clips" role="group" aria-label="Animaciones"></div></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from "three";
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoomEnvironment } from "three/addons/environments/RoomEnvironment.js";
+
+const LABELS = { Idle: "Reposo", Wave: "Saludo", Celebrate: "Celebración", Walk: "Caminata",
+                 Phone: "Teléfono", Fist: "Puño", Present: "Presentación" };
+const ORDER = ["Idle", "Wave", "Celebrate", "Walk", "Phone", "Fist", "Present"];
+const ONCE = new Set(["Celebrate", "Present"]);
+const MODEL = new URLSearchParams(location.search).get("model") || "mascot.glb";
+
+const view = document.getElementById("view");
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.NeutralToneMapping ?? THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 0.92;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+view.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+const bg = getComputedStyle(document.documentElement).getPropertyValue("--bg").trim() || "#f5eee3";
+scene.background = new THREE.Color(bg);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(renderer), 0.04).texture;
+scene.environmentIntensity = 0.45;
+
+const camera = new THREE.PerspectiveCamera(32, innerWidth / innerHeight, 0.05, 100);
+camera.position.set(0.9, 1.15, 4.4);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0.8, 0);
+controls.enableDamping = true;
+controls.minDistance = 1.2;
+controls.maxDistance = 9;
+
+const key = new THREE.DirectionalLight(0xffeedd, 1.55);
+key.position.set(-2.5, 4, 3.5);
+key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.left = -3; key.shadow.camera.right = 3;
+key.shadow.camera.top = 3; key.shadow.camera.bottom = -3;
+key.shadow.camera.near = 0.5; key.shadow.camera.far = 12;
+key.shadow.radius = 6; key.shadow.bias = -0.0004;
+scene.add(key);
+const fill = new THREE.DirectionalLight(0xeef2ff, 0.55);
+fill.position.set(3, 1.5, 2.5);
+scene.add(fill);
+const rim = new THREE.DirectionalLight(0xfff4e6, 1.2);
+rim.position.set(1.5, 2.5, -3);
+scene.add(rim);
+scene.add(new THREE.HemisphereLight(0xfff8ef, 0xcdbda8, 0.45));
+
+const ground = new THREE.Mesh(new THREE.CircleGeometry(6, 64), new THREE.ShadowMaterial({ opacity: 0.16 }));
+ground.rotation.x = -Math.PI / 2;
+ground.receiveShadow = true;
+scene.add(ground);
+
+let mixer, actions = {}, current, skeletonHelper, model;
+const status = document.getElementById("status");
+
+new GLTFLoader().load(MODEL, (gltf) => {
+  model = gltf.scene;
+  model.traverse((o) => {
+    if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; o.frustumCulled = false; }
+  });
+  scene.add(model);
+  skeletonHelper = new THREE.SkeletonHelper(model);
+  skeletonHelper.visible = false;
+  scene.add(skeletonHelper);
+  mixer = new THREE.AnimationMixer(model);
+  for (const clip of gltf.animations) {
+    const a = mixer.clipAction(clip);
+    if (ONCE.has(clip.name)) { a.setLoop(THREE.LoopOnce); a.clampWhenFinished = true; }
+    actions[clip.name] = a;
+  }
+  const bar = document.getElementById("clips");
+  for (const name of ORDER.filter((n) => actions[n]).concat(Object.keys(actions).filter((n) => !ORDER.includes(n)))) {
+    const b = document.createElement("button");
+    b.textContent = LABELS[name] || name;
+    b.dataset.clip = name;
+    b.setAttribute("aria-pressed", "false");
+    b.onclick = () => play(name);
+    bar.appendChild(b);
+  }
+  let tris = 0, bones = 0;
+  model.traverse((o) => {
+    if (o.isSkinnedMesh) { bones = Math.max(bones, o.skeleton.bones.length); }
+    if (o.isMesh) { tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; }
+  });
+  document.getElementById("info").textContent =
+    `${Math.round(tris).toLocaleString("es")} triángulos · ${bones} huesos · ${gltf.animations.length} animaciones`;
+  status.remove();
+  window.__mascot = { ready: true, clips: Object.keys(actions), play, setTime, bones };
+  play(new URLSearchParams(location.search).get("clip") || "Idle");
+}, undefined, (e) => { status.textContent = "No se pudo cargar el modelo: " + e.message; });
+
+function play(name) {
+  const next = actions[name];
+  if (!next) return;
+  next.reset().setEffectiveWeight(1).play();
+  if (current && current !== next) current.crossFadeTo(next, 0.25, false);
+  current = next;
+  document.querySelectorAll("#clips button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.clip === name)));
+}
+
+function setTime(name, t) {            // deterministic pose for screenshots / tests
+  for (const a of Object.values(actions)) a.stop();
+  const a = actions[name];
+  a.reset().play();
+  a.time = t;
+  current = a;
+  mixer.update(0);
+}
+
+document.getElementById("bones").onchange = (e) => { if (skeletonHelper) skeletonHelper.visible = e.target.checked; };
+const rotateBox = document.getElementById("rotate");
+rotateBox.onchange = () => { controls.autoRotate = rotateBox.checked; };
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = clock.getDelta();
+  if (mixer && !window.__freeze) mixer.update(dt);
+  controls.update();
+  renderer.render(scene, camera);
+});
+addEventListener("resize", () => {
+  camera.aspect = innerWidth / innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+</script>
+</body>
+</html>
