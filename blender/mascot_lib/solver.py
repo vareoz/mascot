@@ -90,7 +90,7 @@ def solve_thumb_over_fingers(fk, finger_angles, target_fingers=("Index", "Middle
             name, M, L = ch[1]
             centre = np.array(M.translation) + np.array(M.col[1].xyz) * L * 0.5
             dorsal = -np.array(M.col[2].xyz)
-            tgt.append(centre + dorsal * (fk.radii[name][0] + fk.radii[f"DEF_Thumb_03.{fk.side}"][0]) * 0.92)
+            tgt.append(centre + dorsal * (fk.radii[name][0] + fk.radii[f"DEF_Thumb_03.{fk.side}"][0]) * 1.18)
     target = np.mean(tgt, 0)
     best = None
     rng = np.random.default_rng(3)
