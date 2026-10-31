@@ -6,19 +6,19 @@ Columnas: altura mínima de la suela respecto al suelo; profundidad máxima de m
 
 | Animación | Suela mín. (mm) | Mano en cuerpo (mm) | Teléfono en cuerpo (mm) | Mano en teléfono (mm) | Choques entre dedos | Solapes en pliegues | Escala cuerpo |
 |---|---|---|---|---|---|---|---|
-| Idle | 0.2 | 0.0 | 0.0 | 0.0 | 0 | 0 | 1.6% |
-| Wave | 0.2 | 0.0 | 0.0 | 0.0 | 0 | 21 | 1.0% |
-| Celebrate | 0.2 | 0.0 | 0.0 | 0.0 | 78 | 182 | 8.0% |
-| Walk | 0.5 | 0.0 | 0.0 | 0.0 | 0 | 0 | 1.2% |
-| Phone | 0.2 | 0.0 | 0.0 | 0.0 | 0 | 187 | 1.0% |
-| Fist | 0.2 | 0.0 | 0.0 | 0.0 | 21 | 17 | 0.8% |
-| Present | 0.2 | 0.4 | 0.0 | 0.0 | 1 | 54 | 0.8% |
+| Idle | -0.1 | 4.1 | 0.0 | 0.0 | 0 | 7 | 1.6% |
+| Wave | -0.1 | 16.2 | 0.0 | 0.0 | 0 | 61 | 1.0% |
+| Celebrate | -0.1 | 4.6 | 0.0 | 0.0 | 80 | 244 | 8.0% |
+| Walk | 0.4 | 5.2 | 0.0 | 0.0 | 0 | 7 | 1.2% |
+| Phone | -0.1 | 11.1 | 0.0 | 0.2 | 0 | 185 | 1.0% |
+| Fist | -0.1 | 0.0 | 0.0 | 0.0 | 14 | 60 | 0.8% |
+| Present | -0.1 | 18.1 | 0.0 | 0.0 | 0 | 129 | 0.8% |
 
 | Pose de mano | Choques entre dedos | Solapes en pliegues |
 |---|---|---|
-| fist | 21 | 67 |
-| open | 0 | 50 |
-| phone | 0 | 133 |
-| point | 1 | 51 |
-| relaxed | 0 | 50 |
-| wave | 0 | 50 |
+| fist | 14 | 107 |
+| open | 0 | 66 |
+| phone | 0 | 118 |
+| point | 1 | 128 |
+| relaxed | 0 | 66 |
+| wave | 0 | 75 |
