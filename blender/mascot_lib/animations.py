@@ -418,7 +418,7 @@ def anim_phone(rig):
     n_fw = Vector((0.18, -1.0, 0.08)).normalized()
     n_fw = (n_fw - t_up * n_fw.dot(t_up)).normalized()
     a_out = t_up.cross(n_fw).normalized()            # fingers point outwards (+X)
-    centre = Vector((0.60, -0.30, 1.07))
+    centre = Vector((0.58, -0.34, 1.20))
     # desired phone matrix -> hand control matrix through the rest hand/phone offset
     from .props import phone_world_matrix
     rel = rest(rig, "CTRL_IK_Hand.L").inverted() @ phone_world_matrix(1)

@@ -37,7 +37,7 @@ def mirror(v):
 # ---------------------------------------------------------------------------
 # Body
 # ---------------------------------------------------------------------------
-ZB = 0.42                 # body bottom (centre of the base edge)
+ZB = 0.50                 # body bottom (centre of the base edge)
 BODY_H = 1.0              # nominal body height
 
 
@@ -82,8 +82,8 @@ class Body:
     @staticmethod
     def y_extent(z):
         t = np.clip((z - ZB) / BODY_H, 0.0, 1.0)
-        yf = -0.265 + 0.075 * t       # front face leans back slightly
-        yb = 0.265 - 0.15 * t         # back face leans forward: thinner towards the top
+        yf = -0.315 + 0.090 * t       # front face leans back slightly
+        yb = 0.315 - 0.165 * t        # back face leans forward: thinner towards the top
         return (yf + yb) / 2, (yb - yf) / 2
 
     def __call__(self, p):
@@ -97,7 +97,7 @@ class Body:
         return (np.minimum(np.maximum(wx, wy), 0.0)
                 + np.sqrt(np.maximum(wx, 0) ** 2 + np.maximum(wy, 0) ** 2) - re)
 
-    bounds = ((-0.66, -0.38, ZB - 0.08), (0.66, 0.38, ZB + 1.12))
+    bounds = ((-0.66, -0.42, ZB - 0.08), (0.66, 0.42, ZB + 1.16))
 
 
 BODY = Body()
@@ -171,7 +171,7 @@ def rounded_triangle_outline(verts, r, count=150):
 # Face
 # ---------------------------------------------------------------------------
 class Face:
-    EYE_X = 0.116
+    EYE_X = 0.124
     EYE_Z = ZB + 0.658
     EYE_R = (0.046, 0.076, 0.029)        # half width, half height, half depth
     EYE_SINK = 0.009                     # how far the eye's centre sits under the surface
@@ -284,10 +284,10 @@ def eye_frame(side):
 class Arm:
     # the shoulder ball sits just under the side surface of the body; the arm
     # hangs alongside the sloped side, slightly more open than the side itself
-    SHOULDER = np.array([0.385, -0.025, ZB + 0.425])
+    SHOULDER = np.array([0.385, -0.030, ZB + 0.425])
     UPPER_LEN = 0.165
     FORE_LEN = 0.160
-    ABDUCT = 42.0            # degrees away from the body (from vertical)
+    ABDUCT = 45.0            # degrees away from the body (from vertical)
     FORWARD = 4.0            # degrees forward swing of the upper arm
     ELBOW_BEND = 10.0        # rest-pose elbow flexion (forward)
     R_SHOULDER = 0.100                   # chunky sausage arms (~18% of the body width)
@@ -313,7 +313,7 @@ class Hand:
 
 
 class Phone:
-    W, H, T = 0.172, 0.360, 0.028          # width, height, thickness
+    W, H, T = 0.200, 0.400, 0.030          # width, height, thickness
     # centre of the phone in the left-hand frame (along fingers a, towards thumb t,
     # out of the palm n).  The phone's back rests on the palm, its width runs along
     # the fingers and its long axis along the knuckle line (thumb side up).
@@ -324,10 +324,10 @@ class Phone:
 
 class Leg:
     HIP = np.array([0.180, 0.0, ZB + 0.12])
-    KNEE = np.array([0.183, -0.050, 0.295])      # slight rest bend gives the IK some slack
+    KNEE = np.array([0.183, -0.055, 0.335])      # slight rest bend gives the IK some slack
     ANKLE = np.array([0.186, 0.0, 0.150])
     R = (0.115, 0.110, 0.104)                    # thick tubes (~20% of the body width)
-    TOE_OUT = 8.0                        # degrees, toes pointing slightly outwards
+    TOE_OUT = 14.0                        # degrees, toes pointing slightly outwards
 
 
 class Rig:
@@ -504,7 +504,7 @@ class Rig:
             foot = smin(heel, toe, 0.06)
             d = smin(leg, foot, 0.045)
             # flat sole with a rounded rim
-            return round_intersect(d, -p[:, 2], 0.03)
+            return round_intersect(d, 0.0008 - p[:, 2], 0.03)   # sole 0.8 mm above the floor
         return f
 
     def arm_bounds(self):

@@ -10,7 +10,7 @@ def srgb(r, g, b):
 
 
 PALETTE = {
-    "cream": srgb(238, 226, 205),
+    "cream": srgb(238, 222, 197),
     "black": srgb(30, 29, 30),
     "eye": srgb(12, 12, 13),
     "background": srgb(245, 238, 227),
