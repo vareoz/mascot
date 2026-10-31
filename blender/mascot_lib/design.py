@@ -37,17 +37,17 @@ def mirror(v):
 # ---------------------------------------------------------------------------
 # Body
 # ---------------------------------------------------------------------------
-ZB = 0.50                 # body bottom (centre of the base edge)
+ZB = 0.42                 # body bottom (legs + feet = ~0.36 of the body height, as measured) (centre of the base edge)
 BODY_H = 1.0              # nominal body height
 
 
 class Body:
     # Sharp construction triangle (before corner fillets)
     W0 = 1.15
-    H0 = 1.33
+    H0 = 1.27
     BASE_BULGE = 0.018
     SIDE_BULGE = 0.022
-    R_TOP = 0.42           # fillet radius of the top corner (soft, rounded tip as in the reference)
+    R_TOP = 0.29           # fillet radius of the top corner (soft, rounded tip as in the reference)
     R_BASE = 0.13           # fillet radius of the two bottom corners
     EDGE_ROLL = 0.072       # radius of the soft edge between front/back faces and the sides
     PILLOW = 0.020          # extra inflation of the front and back faces (puffy vinyl)
@@ -82,7 +82,7 @@ class Body:
     @staticmethod
     def y_extent(z):
         t = np.clip((z - ZB) / BODY_H, 0.0, 1.0)
-        yf = -0.315 + 0.090 * t       # front face leans back slightly
+        yf = -0.315 + 0.050 * t       # front face almost upright
         yb = 0.315 - 0.165 * t        # back face leans forward: thinner towards the top
         return (yf + yb) / 2, (yb - yf) / 2
 
@@ -284,10 +284,10 @@ def eye_frame(side):
 class Arm:
     # the shoulder ball sits just under the side surface of the body; the arm
     # hangs alongside the sloped side, slightly more open than the side itself
-    SHOULDER = np.array([0.412, -0.030, ZB + 0.425])
-    UPPER_LEN = 0.165
-    FORE_LEN = 0.160
-    ABDUCT = 47.0            # degrees away from the body (from vertical)
+    SHOULDER = np.array([0.375, -0.030, ZB + 0.425])
+    UPPER_LEN = 0.135
+    FORE_LEN = 0.130
+    ABDUCT = 52.0            # degrees away from the body (from vertical)
     FORWARD = 4.0            # degrees forward swing of the upper arm
     ELBOW_BEND = 10.0        # rest-pose elbow flexion (forward)
     R_SHOULDER = 0.100                   # chunky sausage arms (~18% of the body width)
@@ -324,7 +324,7 @@ class Phone:
 
 class Leg:
     HIP = np.array([0.180, 0.0, ZB + 0.12])
-    KNEE = np.array([0.183, -0.055, 0.335])      # slight rest bend gives the IK some slack
+    KNEE = np.array([0.183, -0.045, 0.290])      # slight rest bend gives the IK some slack
     ANKLE = np.array([0.186, 0.0, 0.150])
     R = (0.115, 0.110, 0.104)                    # thick tubes (~20% of the body width)
     TOE_OUT = 14.0                        # degrees, toes pointing slightly outwards

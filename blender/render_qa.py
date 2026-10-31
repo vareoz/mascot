@@ -111,7 +111,7 @@ def anims():
 
 def hero():
     use_action("Phone", 8)          # before the free-hand gesture: arm hanging as in the reference
-    S.aim_camera(cam, (0.08, 0, 0.92), -24, 3, 3.1, 40)    # close, slightly wide lens like the reference
+    S.aim_camera(cam, (0.06, 0, 0.84), -24, 0, 3.0, 40)    # close, eye-level, slightly wide lens like the reference
     render(os.path.join(OUT, "hero_phone.png"), (1200, 1200), 128)
     use_action("Celebrate", 23)
     S.aim_camera(cam, (0, 0, 1.0), 10, 5, 5.0, 60)

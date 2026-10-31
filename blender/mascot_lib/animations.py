@@ -55,6 +55,7 @@ def place(rig, name, M):
 
 
 ARM_REACH = 0.94 * (D.Arm.UPPER_LEN + D.Arm.FORE_LEN)
+HAND_CLEARANCE = 0.16       # wrist-to-body distance that keeps the whole hand outside the body
 
 
 def hand_target(rig, side, wrist, fingers_dir, palm_normal, shoulder_offset=(0, 0, 0)):
@@ -62,9 +63,20 @@ def hand_target(rig, side, wrist, fingers_dir, palm_normal, shoulder_offset=(0, 
     elbow always keeps a little bend (no snapping straight)."""
     s = Vector(D.RIG.S if side == "L" else D.mirror(D.RIG.S)) + Vector(shoulder_offset)
     w = Vector(wrist)
-    d = w - s
-    if d.length > ARM_REACH:
-        w = s + d.normalized() * ARM_REACH
+    off = Vector(shoulder_offset)
+    for _ in range(12):
+        d = w - s
+        if d.length > ARM_REACH:
+            w = s + d.normalized() * ARM_REACH
+        # keep the hand (wrist + palm) outside the body: push along the body's normal
+        p = np.array([tuple(w - off)])
+        clearance = float(D.BODY(p)[0]) - HAND_CLEARANCE
+        if clearance >= 0:
+            break
+        e = 1e-3
+        g = Vector([(float(D.BODY(p + dd)[0]) - float(D.BODY(p - dd)[0])) / (2 * e)
+                    for dd in np.eye(3)[:, None, :] * e]).normalized()
+        w = w + g * (-clearance + 0.002)
     return {f"CTRL_IK_Hand.{side}": place(rig, f"CTRL_IK_Hand.{side}",
                                          frame_from_axes(fingers_dir, palm_normal, w))}
 
@@ -209,7 +221,7 @@ def anim_idle(rig):
             breath(t),
             {"CTRL_COG": {"l": (0, 0, -0.004 * (1 - c) / 2)},
              "DEF_Body": {"r": (0.8 * s, 0, 0.6 * math.sin(4 * math.pi * t))}},
-            {"FK_UpperArm.X": {"r": (2.5 * s, 0, -3 + 1.2 * c)}, "FK_Forearm.X": {"r": (-6 - 3 * s, 0, 0)},
+            {"FK_UpperArm.X": {"r": (2.5 * s, 0, -5 + 1.2 * c)}, "FK_Forearm.X": {"r": (-6 - 3 * s, 0, 0)},
              "FK_Hand.X": {"r": (4 + 2 * c, 0, 0)}},
             relaxed_hands(),
         )
@@ -247,7 +259,7 @@ def anim_wave(rig):
             k = 1.0
         k = k * k * (3 - 2 * k)
         wave = math.sin((f - 14) / 10 * math.pi) if 14 <= f <= 62 else 0.0
-        a_up = Vector((-0.30, -0.10, 1.0)).normalized()
+        a_up = Vector((-0.75, -0.10, 0.70)).normalized()     # fingers up and out: thumb away from the head
         n_up = Vector((0, -1, 0))
         a_up = Matrix.Rotation(math.radians(22 * wave * k), 3, n_up) @ a_up
         a = rest_a.lerp(a_up, k).normalized()
@@ -260,7 +272,7 @@ def anim_wave(rig):
                      {"DEF_Body": {"r": (0, -4 * k, 3 * k + 1.0 * wave * k)},
                       "CTRL_COG": {"l": (0, 0, 0)}},
                      hand_pose("relaxed", "L"),
-                     {"FK_UpperArm.L": {"r": (0, 0, -3 * k)}, "FK_Forearm.L": {"r": (-8, 0, 0)}},
+                     {"FK_UpperArm.L": {"r": (0, 0, -5 - 3 * k)}, "FK_Forearm.L": {"r": (-8, 0, 0)}},
                      eyes(look=(-0.006 * k, 0.003 * k)), smile(1.0 + 0.18 * k, 0.002 * k))
         # fingers: open wave hand with a small ripple through the fingers
         hp = lerp_pose(hand_pose("relaxed", "R"), hand_pose("wave", "R"), k)
@@ -385,7 +397,7 @@ def anim_walk(rig, leg_ob):
             kn = R.knee if side == "L" else D.mirror(R.knee)
             pose.update(pole(rig, f"CTRL_Pole_Leg.{side}", (kn[0], kn[1] - 0.45 + y * 0.5, kn[2])))
             swing = 17 * math.cos(2 * math.pi * (p + ph))      # + = arm back when the same-side foot is forward
-            pose[f"FK_UpperArm.{side}"] = {"r": (swing, 0, -9 * sg)}   # arms swing slightly away from the body
+            pose[f"FK_UpperArm.{side}"] = {"r": (swing, 0, -13 * sg)}   # arms swing slightly away from the body
             pose[f"FK_Forearm.{side}"] = {"r": (-10 - 8 * max(0, -math.cos(2 * math.pi * (p + ph))), 0, 0)}
             pose[f"FK_Hand.{side}"] = {"r": (6, 0, 0)}
         bob = 0.016 * (math.cos(4 * math.pi * p) + 1) / 2
@@ -418,7 +430,7 @@ def anim_phone(rig):
     n_fw = Vector((0.18, -1.0, 0.08)).normalized()
     n_fw = (n_fw - t_up * n_fw.dot(t_up)).normalized()
     a_out = t_up.cross(n_fw).normalized()            # fingers point outwards (+X)
-    centre = Vector((0.58, -0.34, 1.20))
+    centre = Vector((0.56, -0.34, 1.10))
     # desired phone matrix -> hand control matrix through the rest hand/phone offset
     from .props import phone_world_matrix
     rel = rest(rig, "CTRL_IK_Hand.L").inverted() @ phone_world_matrix(1)
@@ -541,7 +553,7 @@ def anim_present(rig):
                      pole(rig, "CTRL_Pole_Arm.R", (-0.55, 0.55, 0.70)),
                      lerp_pose(hand_pose("relaxed", "R"), hand_pose("point", "R"), min(1.0, kk * 1.2)),
                      hand_pose("relaxed", "L"),
-                     {"FK_UpperArm.L": {"r": (4 * kk, 0, -3 * kk)}, "FK_Forearm.L": {"r": (-10, 0, 0)}},
+                     {"FK_UpperArm.L": {"r": (4 * kk, 0, -5 - 3 * kk)}, "FK_Forearm.L": {"r": (-10, 0, 0)}},
                      {"DEF_Body": {"r": (0, -7 * kk, 2.5 * kk)},
                       "CTRL_COG": {"l": (-0.01 * kk, 0, -0.01 * max(0, -k) * 10)}},
                      breath(f / n, 0.5),
