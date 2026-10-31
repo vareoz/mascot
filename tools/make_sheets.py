@@ -44,6 +44,11 @@ def main():
     if all(os.path.exists(p) for p in hp):
         sheet(hp, 4, os.path.join(DST, "hand_poses.png"), [f"{p} / {v}" for p in poses for v in views])
 
+    import shutil
+    for p in glob.glob(os.path.join(SRC, "hero_*.png")):
+        shutil.copy(p, os.path.join(DST, os.path.basename(p)))
+        print("copied", os.path.basename(p))
+
     anims = sorted({re.match(r"anim_(\w+?)_\d+\.png", os.path.basename(p)).group(1)
                     for p in glob.glob(os.path.join(SRC, "anim_*.png"))})
     for a in anims:

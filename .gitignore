@@ -1,5 +1,5 @@
-__pycache__/
-*.pyc
 *.blend1
-renders/frames/
+*.pyc
+__pycache__/
 node_modules/
+renders/frames/
